@@ -1,6 +1,47 @@
 # Changelog
 
-## [Unreleased]
+## [Unreleased] - 현재 문제점
+
+### Issues (해결 필요)
+- [ ] **홈페이지 레이아웃 깨짐 문제**
+  - MUI import 제거했지만 여전히 레이아웃 문제 존재
+  - 사용되지 않는 변수들(companyHistory, clientLogos) 정리 필요
+  - 완전한 Tailwind CSS 전환 확인 필요
+- [ ] Frontend 서버 포트 충돌 (3000 포트)
+- [ ] 외부 placeholder 이미지 의존성 완전 제거 확인
+
+## [Stage 4] - 2025-06-03 - Backend ↔ Frontend ↔ DB 통합
+
+### Major Changes
+- **이미지 관리 시스템 완전 재구성**
+  - 이미지 저장 위치: `backend/static/images/` → `frontend/public/images/`
+  - 254개 이미지 파일 마이그레이션 완료
+  - URL 핸들링: `http://localhost:8000/static/images/...` → `/images/...`
+  - Backend StaticFiles mount 제거
+
+- **UI 프레임워크 표준화**
+  - MUI 완전 제거, Tailwind CSS로 통일
+  - Layout.tsx, Navbar.tsx 완전 Tailwind 변환
+  - 제품 페이지들 Tailwind 변환 완료
+
+### Added
+- Local SVG 기반 placeholder 시스템
+- UTF-8 한국어 텍스트 지원 (btoa → encodeURIComponent)
+- 완전한 오프라인 이미지 시스템
+- 반응형 Tailwind 네비게이션 바
+
+### Fixed
+- 한국어 텍스트 인코딩 오류 해결
+- 외부 이미지 서비스 의존성 제거 (via.placeholder.com)
+- 데이터베이스 스키마 불일치 문제 해결
+- Image utility 함수 필드명 매핑 수정
+
+### Technical Debt
+- SQLAlchemy 순환 import 문제 해결
+- Database 리셋 및 254개 제품 데이터 재구축
+- 이미지 관리 아키텍처 완전 재설계
+
+## [Stage 3] - Frontend Preparation
 
 ### Added
 - 안전 장비 관리 시스템 구축

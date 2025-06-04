@@ -1,16 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
-from ..database import SessionLocal
+from backend.database import get_db, SessionLocal
 from backend.core.auth import get_api_key
 from backend.crud import product as product_crud
 from backend.crud import inquiry as inquiry_crud
 from backend.crud import category as category_crud
-from backend.crud import image as image_crud
-from backend.schemas.product import Product, ProductCreate, ProductUpdate
-from backend.schemas.inquiry import Inquiry
+from backend.schemas.product import ProductResponse, ProductCreate, ProductUpdate
+from backend.schemas.inquiry import InquiryResponse
 from backend.schemas.category import Category, CategoryCreate, CategoryUpdate
-from backend.models.image import ImageType
 
 router = APIRouter(
     prefix="/api/admin",
@@ -88,7 +86,7 @@ async def delete_category(
         raise HTTPException(status_code=404, detail="Category not found")
     return {"message": f"카테고리 {category_id}가 성공적으로 삭제되었습니다"}
 
-@router.get("/inquiries", response_model=List[Inquiry])
+@router.get("/inquiries", response_model=List[InquiryResponse])
 async def read_inquiries(
     skip: int = 0,
     limit: int = 100,
@@ -97,7 +95,7 @@ async def read_inquiries(
     """문의 목록을 조회합니다."""
     return inquiry_crud.get_inquiries(db, skip=skip, limit=limit)
 
-@router.get("/inquiries/{inquiry_id}", response_model=Inquiry)
+@router.get("/inquiries/{inquiry_id}", response_model=InquiryResponse)
 async def read_inquiry(
     inquiry_id: int,
     db: Session = Depends(get_db)
@@ -119,7 +117,7 @@ async def mark_inquiry_as_read(
         raise HTTPException(status_code=404, detail="Inquiry not found")
     return {"message": "성공적으로 읽음 처리되었습니다"}
 
-@router.post("/products", response_model=Product)
+@router.post("/products", response_model=ProductResponse)
 async def create_product(
     product: ProductCreate,
     db: Session = Depends(get_db)
@@ -127,7 +125,7 @@ async def create_product(
     """새로운 제품을 추가합니다."""
     return product_crud.create_product(db, product)
 
-@router.put("/products/{product_id}", response_model=Product)
+@router.put("/products/{product_id}", response_model=ProductResponse)
 async def update_product(
     product_id: int,
     product: ProductUpdate,
@@ -171,47 +169,4 @@ async def delete_content(content_id: str):
     """컨텐츠를 삭제하는 엔드포인트"""
     return {
         "message": f"컨텐츠 {content_id}가 성공적으로 삭제되었습니다"
-    }
-
-@router.post("/products/{product_id}/images")
-async def upload_product_image(
-    product_id: int,
-    image_type: ImageType,
-    file: UploadFile = File(...),
-    display_order: int = 0,
-    db: Session = Depends(get_db)
-):
-    """제품 이미지를 업로드합니다."""
-    try:
-        db_image = image_crud.create_image(db, product_id, file, image_type, display_order)
-        return {
-            "image_key": db_image.image_key,
-            "file_path": db_image.file_path,
-            "image_type": db_image.image_type
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.put("/images/{image_key}")
-async def update_product_image(
-    image_key: str,
-    file: UploadFile = None,
-    display_order: int = None,
-    db: Session = Depends(get_db)
-):
-    """제품 이미지를 수정합니다."""
-    db_image = image_crud.update_image(db, image_key, file, display_order)
-    if not db_image:
-        raise HTTPException(status_code=404, detail="Image not found")
-    return db_image
-
-@router.delete("/images/{image_key}")
-async def delete_product_image(
-    image_key: str,
-    db: Session = Depends(get_db)
-):
-    """제품 이미지를 삭제합니다."""
-    success = image_crud.delete_image(db, image_key)
-    if not success:
-        raise HTTPException(status_code=404, detail="Image not found")
-    return {"message": "Image successfully deleted"} 
+    } 

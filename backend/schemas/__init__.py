@@ -1,4 +1,4 @@
-from . import product
-from . import review
-from . import inquiry
-from . import category 
+# Export all schemas for easy importing
+from .safety import *
+from .inquiry import *
+from .company import * 

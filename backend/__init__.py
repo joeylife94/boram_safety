@@ -1,5 +1,5 @@
 """
-보람안전 웹사이트 백엔드 패키지
+Boram Safety Backend Package
 """
 
 # This file makes the backend directory a Python package 

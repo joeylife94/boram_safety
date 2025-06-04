@@ -1,6 +1,5 @@
 from backend.database import Base, engine
-from backend.models.product import Product
-from backend.models.category import Category
+from backend.models.safety import SafetyCategory, SafetyProduct
 from backend.models.inquiry import Inquiry
 from backend.models.company import CompanyInfo, History, Certification, Client
 
