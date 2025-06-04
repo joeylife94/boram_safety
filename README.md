@@ -2,86 +2,115 @@
 
 보람안전의 공식 웹사이트 프로젝트입니다. Next.js와 TypeScript를 기반으로 제작된 현대적인 웹 애플리케이션입니다.
 
-## 문서
+## 주요 기능
 
-모든 프로젝트 문서는 `docs/` 디렉토리에서 찾을 수 있습니다:
+✨ **통합 검색 시스템**
+- 헤더에서 실시간 검색 제안
+- 카테고리별 상세 검색 및 필터링
+- 가격, 재고, 추천 제품 필터
+- 전문적인 이커머스 UI/UX 패턴
 
-- [프로젝트 개요](docs/project-overview.md)
-- [프론트엔드 문서](docs/frontend-architecture.md)
-- [백엔드 문서](docs/backend-overview.md)
+🏢 **제품 카탈로그**
+- 카테고리별 제품 목록 및 상세 정보
+- 반응형 제품 이미지 갤러리
+- 모바일 최적화된 카드 디자인
 
-## 빠른 시작
-
-```bash
-# 프론트엔드 실행
-cd frontend
-npm install
-npm run dev
-
-# 백엔드 실행
-cd backend
-poetry install
-poetry run uvicorn app.main:app --reload
-```
-
-자세한 설정 및 개발 가이드는 [프로젝트 문서](docs/project-overview.md)를 참조해주세요.
+📱 **반응형 디자인**
+- 모든 디바이스에서 최적화된 사용자 경험
+- 모바일 우선 디자인 접근법
 
 ## 기술 스택
 
-- **Frontend**
-  - Next.js 14
-  - TypeScript
-  - Tailwind CSS
-  - React Query (데이터 관리)
+### Frontend
+- **Next.js 13+** - App Router, SSR/SSG
+- **TypeScript** - 타입 안전성
+- **Tailwind CSS** - 유틸리티 우선 CSS 프레임워크
+- **React** - 컴포넌트 기반 UI
+
+### Backend
+- **FastAPI** - 고성능 Python 웹 프레임워크
+- **SQLAlchemy** - ORM 및 데이터베이스 관리
+- **PostgreSQL** - 관계형 데이터베이스
+- **Pydantic** - 데이터 검증 및 직렬화
 
 ## 프로젝트 구조
 
 ```
-frontend/
-├── src/
-│   ├── app/              # Next.js 14 App Router 페이지
-│   ├── components/       # 재사용 가능한 컴포넌트
-│   ├── types/           # TypeScript 타입 정의
-│   ├── utils/           # 유틸리티 함수
-│   └── styles/          # 전역 스타일
+├── frontend/
+│   ├── src/
+│   │   ├── pages/              # Next.js 페이지
+│   │   ├── components/         # 재사용 가능한 컴포넌트
+│   │   ├── api/               # API 호출 함수
+│   │   ├── types/             # TypeScript 타입 정의
+│   │   ├── utils/             # 유틸리티 함수
+│   │   └── styles/            # 전역 스타일
+│   └── public/                # 정적 파일 (이미지 등)
+├── backend/
+│   ├── app/
+│   │   ├── api/               # API 라우터
+│   │   ├── models/            # 데이터베이스 모델
+│   │   └── schemas/           # Pydantic 스키마
+│   └── requirements.txt       # Python 의존성
+└── docs/                      # 프로젝트 문서
 ```
 
-## 주요 기능
+## 빠른 시작
 
-- **제품 카탈로그**: 카테고리별 제품 목록 및 상세 정보 제공
-- **반응형 디자인**: 모든 디바이스에서 최적화된 사용자 경험
-- **성능 최적화**: Next.js의 이미지 최적화 및 SSR/SSG 활용
+### 프론트엔드 실행
 
-## 페이지 구조
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-- `/`: 메인 페이지
-- `/products`: 제품 목록
-- `/products/[id]`: 제품 상세 페이지
-- `/about`: 회사 소개
-- `/contact`: 문의하기
+### 백엔드 실행
 
-## 컴포넌트 가이드
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
-### ProductCard
-제품 목록에서 사용되는 카드 컴포넌트
-- Props:
-  - `product`: Product 타입의 제품 정보
-- 기능:
-  - 반응형 이미지 표시
-  - NEW, BEST 뱃지 지원
-  - 호버 효과
+## API 엔드포인트
 
-### Header
-- 반응형 네비게이션
-- 스크롤 인터랙션
-- 모바일 메뉴 지원
+### 제품 관련
+- `GET /api/categories` - 제품 카테고리 목록
+- `GET /api/products/{category_code}` - 카테고리별 제품 목록
+- `GET /api/products/{category_code}/{product_id}` - 제품 상세 정보
+
+### 검색 관련
+- `GET /api/search` - 고급 검색 (필터링, 정렬)
+- `GET /api/search/suggestions` - 실시간 검색 제안
+
+## 주요 페이지
+
+- `/` - 메인 페이지
+- `/products` - 제품 카테고리 목록
+- `/products/[category]` - 카테고리별 제품 목록 (검색/필터 통합)
+- `/products/[category]/[slug]` - 제품 상세 페이지
+- `/about` - 회사 소개
+- `/contact` - 문의하기
+
+## 검색 및 필터링 기능
+
+### 실시간 검색 제안
+- 300ms 디바운스 적용
+- 제품 이미지와 함께 제안 표시
+- 직접 제품 페이지로 이동
+
+### 고급 필터링
+- **가격 범위**: 최소/최대 금액 설정
+- **재고 상태**: 재고 있음/없음 필터
+- **추천 제품**: 인기 제품만 표시
+- **정렬**: 이름순, 가격순, 추천순
 
 ## 개발 가이드라인
 
 ### 코드 스타일
-- ESLint 규칙 준수
-- Prettier 포맷팅 사용
-- TypeScript strict 모드 활성화
+- ESLint 및 Prettier 사용
+- TypeScript strict 모드
+- 컴포넌트 기반 아키텍처
 
 ### 커밋 메시지 컨벤션
 ```
@@ -90,14 +119,15 @@ fix: 버그 수정
 docs: 문서 수정
 style: 코드 포맷팅
 refactor: 코드 리팩토링
-test: 테스트 코드 추가/수정
-chore: 빌드 프로세스 또는 보조 도구 변경
 ```
 
-## 배포
+## 문서
 
-현재 임시 데이터를 사용 중이며, 추후 백엔드 API 연동 예정입니다.
+자세한 개발 문서는 `docs/` 디렉토리를 참조하세요:
+- [프로젝트 개요](docs/project-overview.md)
+- [작업 로그](docs/work-log.md)
+- [할일 목록](docs/TODO.md)
 
-## 문의
+## 라이선스
 
-프로젝트 관련 문의사항은 [담당자 이메일] 로 연락주시기 바랍니다. 
+이 프로젝트는 보람안전의 소유입니다.
