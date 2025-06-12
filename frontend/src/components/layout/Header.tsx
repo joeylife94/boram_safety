@@ -144,7 +144,7 @@ const Header = () => {
                         className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-gray-50 transition-colors text-left"
                       >
                         <img
-                          src={getProductImageUrl({ file_path: suggestion.image_path } as any)}
+                          src={getProductImageUrl({ file_path: suggestion.file_path } as any)}
                           alt={suggestion.name}
                           className="w-12 h-12 object-cover rounded border bg-gray-100"
                           onError={(e) => {
@@ -200,10 +200,10 @@ const Header = () => {
               회사소개
             </Link>
             <Link 
-              href="/contact" 
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              href="/admin" 
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
             >
-              문의하기
+              관리자
             </Link>
           </nav>
 
@@ -280,11 +280,11 @@ const Header = () => {
                 회사소개
               </Link>
               <Link
-                href="/contact"
-                className="block py-2 px-4 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md transition-colors"
+                href="/admin"
+                className="block py-2 px-4 bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors font-medium"
                 onClick={() => setIsMenuOpen(false)}
               >
-                문의하기
+                관리자
               </Link>
             </nav>
           </div>

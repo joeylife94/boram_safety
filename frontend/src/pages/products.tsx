@@ -168,16 +168,16 @@ const ProductsPage = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={() => router.push('/contact')}
+              onClick={() => router.push('/')}
               className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold text-lg transition-colors duration-300"
             >
-              상담 문의하기
+              홈으로 돌아가기
             </button>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/about')}
               className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-lg font-semibold text-lg transition-colors duration-300"
             >
-              홈으로 돌아가기
+              회사소개 보기
             </button>
           </div>
         </div>

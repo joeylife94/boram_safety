@@ -225,11 +225,8 @@ const HomePage = () => {
           <p className="text-lg mb-8 max-w-2xl mx-auto">
             보람안전과 함께 더 안전한 작업환경을 만들어보세요. 전문가 상담을 통해 최적의 솔루션을 찾아드립니다.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/contact" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold text-lg transition-colors duration-300">
-              문의하기
-            </Link>
-            <Link href="/products" className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-lg font-semibold text-lg transition-colors duration-300">
+          <div className="flex justify-center">
+            <Link href="/products" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold text-lg transition-colors duration-300">
               제품 보기
             </Link>
           </div>

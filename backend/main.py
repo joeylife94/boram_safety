@@ -1,17 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-from backend.database import Base, engine
-from backend.routers import public
-from backend.app.api import products
+from fastapi.staticfiles import StaticFiles
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# sys.path를 사용하여 현재 디렉토리에서 모듈을 찾도록 설정
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# 직접 import
+from public.router import router as public_router
+from admin.router import router as admin_router
 
 app = FastAPI(
     title="보람안전 API",
-    description="보람안전 웹사이트를 위한 백엔드 API",
-    version="1.0.0"
+    description="보람안전 웹사이트 API - Public과 Admin 영역 완전 분리",
+    version="2.0.0"
 )
 
 # CORS 설정
@@ -23,22 +26,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 라우터 등록
-app.include_router(public.router)
-# 카테고리 관련 라우트: /api/categories, /api/categories/{code}, /api/categories/{code}/products
-app.include_router(products.router, prefix="/api", tags=["categories", "products"])
+# 정적 파일 서빙 - public/images로 통합
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+images_path = os.path.join(BASE_DIR, "../frontend/public/images")
+print(f"Images path: {os.path.abspath(images_path)}")  # 디버깅용
+
+app.mount("/images", StaticFiles(directory=images_path), name="images")
+
+# API 라우터 등록
+# ✅ Public API: /api/* (GET만 허용)
+app.include_router(public_router, prefix="/api", tags=["public"])
+
+# 🔐 Admin API: /api/admin/* (전체 CRUD 허용)
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 
 @app.get("/")
 async def root():
     return {
-        "message": "보람안전 API에 오신 것을 환영합니다!",
-        "version": "1.0.0",
-        "status": "active"
+        "message": "보람안전 API 서버 v2.0",
+        "structure": {
+            "public": "/api/* (GET only)",
+            "admin": "/api/admin/* (Full CRUD)",
+            "images": "/images/* (Static files)"
+        },
+        "status": "running"
     }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
-
-if __name__ == "__main__":
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True) 
+    return {"status": "healthy", "version": "2.0.0"} 

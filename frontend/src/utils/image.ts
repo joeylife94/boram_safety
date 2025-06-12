@@ -1,7 +1,12 @@
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
 
 /**
- * 이미지 경로를 frontend public 디렉토리의 URL로 변환
+ * 새로운 구조에 맞는 이미지 처리 유틸리티
+ * 공용 리소스: /images/*
+ */
+
+/**
+ * 이미지 경로를 공용 리소스 디렉토리의 URL로 변환
  * @param imagePath 이미지 경로 (/static/images/... 또는 기타)
  * @returns 전체 이미지 URL (/images/...)
  */
@@ -15,14 +20,24 @@ export function getImageUrl(imagePath: string | undefined | null): string {
     return imagePath;
   }
   
-  // backend 상대 경로 형식인 경우 frontend public 경로로 변환
-  if (imagePath.startsWith('/static/images/')) {
-    return imagePath.replace('/static', '');
-  }
-  
-  // 이미 frontend 형식인 경우
+  // 새로운 images 구조인 경우
   if (imagePath.startsWith('/images/')) {
     return imagePath;
+  }
+  
+  // 기존 /static/images/ 경로인 경우 새로운 구조로 변환 (핵심 수정!)
+  if (imagePath.startsWith('/static/images/')) {
+    return imagePath.replace('/static/images/', '/images/');
+  }
+  
+  // 기존 public-assets 경로인 경우 새로운 구조로 변환
+  if (imagePath.startsWith('/public-assets/')) {
+    return imagePath.replace('/public-assets/product-images/', '/images/');
+  }
+  
+  // 상대 경로인 경우 공용 리소스로 변환
+  if (!imagePath.startsWith('/')) {
+    return `/images/${imagePath}`;
   }
   
   // 다른 형식의 경로인 경우 기본 placeholder 반환
@@ -55,11 +70,34 @@ export function getProductImageUrl(product: { file_path?: string; name?: string 
 }
 
 /**
- * 카테고리 이미지 URL 가져오기
+ * 카테고리 이미지 URL 가져오기 (Public용)
  * @param category 카테고리 객체
  * @returns 카테고리 이미지 URL
  */
-export function getCategoryImageUrl(category: { image?: string; name?: string }): string {
+export function getCategoryImageUrl(category: { image?: string; image_path?: string; name?: string; code?: string }): string {
+  // 카테고리 코드가 있으면 해당 이미지 파일을 찾기
+  if (category.code) {
+    return `/images/categories/${category.code}.jpg`;
+  }
+  
+  const imagePath = category.image || category.image_path;
+  if (!imagePath) {
+    return createPlaceholderImage(category.name || 'No Category Image');
+  }
+  return getImageUrl(imagePath);
+}
+
+/**
+ * 관리자용 카테고리 이미지 URL 가져오기
+ * @param category 카테고리 객체
+ * @returns 카테고리 이미지 URL
+ */
+export function getAdminCategoryImageUrl(category: { image?: string; name?: string; code?: string }): string {
+  // 카테고리 코드가 있으면 해당 이미지 파일을 찾기
+  if (category.code) {
+    return `/images/categories/${category.code}.jpg`;
+  }
+  
   if (!category.image) {
     return createPlaceholderImage(category.name || 'No Category Image');
   }

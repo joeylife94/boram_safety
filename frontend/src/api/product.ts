@@ -21,7 +21,7 @@ export async function getCategoryByCode(code: string): Promise<SafetyCategory> {
 
 // 제품 관련 API
 export async function getProductsByCategory(categoryCode: string): Promise<SafetyProduct[]> {
-  const response = await fetch(`${API_BASE_URL}/api/categories/${categoryCode}/products`);
+  const response = await fetch(`${API_BASE_URL}/api/products/by-category/${categoryCode}`);
   if (!response.ok) {
     throw new Error('Failed to fetch products');
   }
@@ -102,7 +102,7 @@ export interface SearchSuggestion {
   id: number;
   name: string;
   category_code: string;
-  image_path: string;
+  file_path: string;
   url: string;
 }
 

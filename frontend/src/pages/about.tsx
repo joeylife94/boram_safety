@@ -123,11 +123,8 @@ const AboutPage = () => {
             보람안전과 파트너십을 통해 더 안전한 작업환경을 구축하고,
             작업자의 안전을 보장하는 솔루션을 만들어보세요.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/contact" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold text-lg transition-colors duration-300">
-              문의하기
-            </a>
-            <a href="/products" className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-lg font-semibold text-lg transition-colors duration-300">
+          <div className="flex justify-center">
+            <a href="/products" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold text-lg transition-colors duration-300">
               제품 보기
             </a>
           </div>

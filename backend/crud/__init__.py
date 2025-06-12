@@ -1,2 +1,2 @@
-from . import inquiry
-from . import company 
+
+from backend.crud import company, product, category

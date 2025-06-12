@@ -235,7 +235,7 @@ export default function ProductDetailPage() {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <button
-                onClick={() => router.push('/contact')}
+                onClick={() => router.push('/')}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold text-lg transition-colors duration-300"
               >
                 견적 문의하기

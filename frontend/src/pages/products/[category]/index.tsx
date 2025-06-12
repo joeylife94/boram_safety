@@ -546,7 +546,7 @@ export default function CategoryPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={() => router.push('/contact')}
+              onClick={() => router.push('/')}
               className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold text-lg transition-colors duration-300"
             >
               견적 문의하기

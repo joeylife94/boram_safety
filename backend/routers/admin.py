@@ -1,26 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
-from backend.database import get_db, SessionLocal
-from backend.core.auth import get_api_key
+from backend.database import get_db
 from backend.crud import product as product_crud
-from backend.crud import inquiry as inquiry_crud
 from backend.crud import category as category_crud
 from backend.schemas.product import ProductResponse, ProductCreate, ProductUpdate
-from backend.schemas.inquiry import InquiryResponse
 from backend.schemas.category import Category, CategoryCreate, CategoryUpdate
 
 router = APIRouter(
-    prefix="/api/admin",
     tags=["admin"]
 )
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.get("/health")
 def admin_health_check():
@@ -29,22 +18,59 @@ def admin_health_check():
 @router.get("/dashboard")
 async def admin_dashboard(db: Session = Depends(get_db)):
     """관리자 대시보드 정보를 반환합니다."""
+    total_products = product_crud.get_product_count(db)
+    total_categories = category_crud.get_category_count(db)
+    featured_products = product_crud.get_featured_product_count(db)
+    
     return {
         "message": "관리자 대시보드에 오신 것을 환영합니다",
         "status": "authenticated",
-        "unread_inquiries": len([i for i in inquiry_crud.get_inquiries(db) if not i.is_read])
+        "stats": {
+            "total_products": total_products,
+            "total_categories": total_categories,
+            "featured_products": featured_products,
+            "total_images": total_products  # 이미지 수는 제품 수와 동일하다고 가정
+        }
     }
 
 @router.post("/upload-image")
 async def upload_image(file: UploadFile = File(...)):
     """제품 이미지를 업로드합니다."""
+    import os
+    import uuid
+    from pathlib import Path
+    
     try:
-        file_url = await save_upload_file(file)
-        return {"url": file_url}
+        # 허용된 파일 형식 체크
+        allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif'}
+        file_extension = os.path.splitext(file.filename)[1].lower()
+        
+        if file_extension not in allowed_extensions:
+            raise HTTPException(status_code=400, detail="지원하지 않는 파일 형식입니다")
+        
+        # 고유한 파일명 생성
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        
+        # 업로드 디렉토리 설정 (frontend/public/images/products/)
+        upload_dir = Path("../frontend/public/images/products")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 파일 저장
+        file_path = upload_dir / unique_filename
+        
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        
+        # 웹에서 접근 가능한 URL 반환
+        file_url = f"/images/products/{unique_filename}"
+        
+        return {"url": file_url, "filename": unique_filename}
+        
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail="파일 업로드 중 오류가 발생했습니다")
+        raise HTTPException(status_code=500, detail=f"파일 업로드 중 오류가 발생했습니다: {str(e)}")
 
 @router.get("/categories", response_model=List[Category])
 async def read_categories(
@@ -54,6 +80,17 @@ async def read_categories(
 ):
     """카테고리 목록을 조회합니다."""
     return category_crud.get_categories(db, skip=skip, limit=limit)
+
+@router.get("/categories/{category_id}", response_model=Category)
+async def read_category(
+    category_id: int,
+    db: Session = Depends(get_db)
+):
+    """특정 카테고리를 조회합니다."""
+    category = category_crud.get_category(db, category_id)
+    if category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return category
 
 @router.post("/categories", response_model=Category)
 async def create_category(
@@ -86,36 +123,27 @@ async def delete_category(
         raise HTTPException(status_code=404, detail="Category not found")
     return {"message": f"카테고리 {category_id}가 성공적으로 삭제되었습니다"}
 
-@router.get("/inquiries", response_model=List[InquiryResponse])
-async def read_inquiries(
+@router.get("/products", response_model=List[ProductResponse])
+async def read_products(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 1000,
+    category_code: str = None,
+    search: str = None,
     db: Session = Depends(get_db)
 ):
-    """문의 목록을 조회합니다."""
-    return inquiry_crud.get_inquiries(db, skip=skip, limit=limit)
+    """제품 목록을 조회합니다."""
+    return product_crud.get_products(db, skip=skip, limit=limit, category_code=category_code, search=search)
 
-@router.get("/inquiries/{inquiry_id}", response_model=InquiryResponse)
-async def read_inquiry(
-    inquiry_id: int,
+@router.get("/products/{product_id}", response_model=ProductResponse)
+async def read_product(
+    product_id: int,
     db: Session = Depends(get_db)
 ):
-    """특정 문의를 조회합니다."""
-    inquiry = inquiry_crud.get_inquiry(db, inquiry_id)
-    if inquiry is None:
-        raise HTTPException(status_code=404, detail="Inquiry not found")
-    return inquiry
-
-@router.post("/inquiries/{inquiry_id}/read")
-async def mark_inquiry_as_read(
-    inquiry_id: int,
-    db: Session = Depends(get_db)
-):
-    """문의를 읽음 상태로 표시합니다."""
-    inquiry = inquiry_crud.mark_as_read(db, inquiry_id)
-    if inquiry is None:
-        raise HTTPException(status_code=404, detail="Inquiry not found")
-    return {"message": "성공적으로 읽음 처리되었습니다"}
+    """특정 제품을 조회합니다."""
+    product = product_crud.get_product(db, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
 
 @router.post("/products", response_model=ProductResponse)
 async def create_product(

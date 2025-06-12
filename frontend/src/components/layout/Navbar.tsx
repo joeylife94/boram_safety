@@ -5,7 +5,6 @@ import Link from 'next/link';
 const pages = [
   { title: '제품', path: '/products' },
   { title: '회사소개', path: '/about' },
-  { title: '문의하기', path: '/contact' },
 ];
 
 export default function Navbar() {
