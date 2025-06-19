@@ -43,8 +43,8 @@ const EditCategoryPage = () => {
         display_order: category.display_order
       });
       
-      if (category.image_path) {
-        setCurrentImagePath(category.image_path);
+      if (category.image) {
+        setCurrentImagePath(category.image);
       }
     } catch (error: any) {
       console.error('Error fetching category:', error);
@@ -175,7 +175,7 @@ const EditCategoryPage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="ml-3">
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-800">{typeof error === 'string' ? error : JSON.stringify(error)}</p>
               </div>
               <button
                 onClick={() => setError(null)}

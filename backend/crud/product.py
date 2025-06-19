@@ -50,7 +50,12 @@ def get_products(
             SafetyProduct.model_number.ilike(search_term)
         )
     
-    results = query.offset(skip).limit(limit).all()
+    # 정렬: 1) category_id, 2) is_featured (1이 먼저), 3) name
+    results = query.order_by(
+        SafetyProduct.category_id,
+        SafetyProduct.is_featured.desc(),  # 1이 먼저 오도록 내림차순
+        SafetyProduct.name
+    ).offset(skip).limit(limit).all()
     
     # 결과를 dict 형태로 변환
     products = []
@@ -138,9 +143,52 @@ def update_product(db: Session, product_id: int, product: ProductUpdate) -> Opti
     return db_product
 
 def delete_product(db: Session, product_id: int) -> Optional[SafetyProduct]:
-    """제품을 삭제합니다."""
+    """제품을 삭제합니다 (연관된 이미지 파일도 함께 삭제)."""
+    import os
+    import json
+    from pathlib import Path
+    
     db_product = db.query(SafetyProduct).filter(SafetyProduct.id == product_id).first()
     if db_product:
+        # 연관된 이미지 파일들 삭제
+        if db_product.file_path:
+            try:
+                # JSON 배열로 저장된 경우
+                image_paths = json.loads(db_product.file_path)
+                if isinstance(image_paths, list):
+                    for image_path in image_paths:
+                        if image_path and image_path.startswith('/images/'):
+                            # /images/ 경로를 실제 파일 시스템 경로로 변환
+                            file_path = Path("../frontend/public") / image_path.lstrip('/')
+                            if file_path.exists():
+                                try:
+                                    os.remove(file_path)
+                                    print(f"이미지 파일 삭제됨: {file_path}")
+                                except Exception as e:
+                                    print(f"이미지 파일 삭제 실패: {file_path}, 오류: {e}")
+                else:
+                    # 단일 경로인 경우
+                    image_path = str(image_paths)
+                    if image_path.startswith('/images/'):
+                        file_path = Path("../frontend/public") / image_path.lstrip('/')
+                        if file_path.exists():
+                            try:
+                                os.remove(file_path)
+                                print(f"이미지 파일 삭제됨: {file_path}")
+                            except Exception as e:
+                                print(f"이미지 파일 삭제 실패: {file_path}, 오류: {e}")
+            except (json.JSONDecodeError, TypeError):
+                # JSON 파싱 실패시 단일 경로로 처리
+                if db_product.file_path.startswith('/images/'):
+                    file_path = Path("../frontend/public") / db_product.file_path.lstrip('/')
+                    if file_path.exists():
+                        try:
+                            os.remove(file_path)
+                            print(f"이미지 파일 삭제됨: {file_path}")
+                        except Exception as e:
+                            print(f"이미지 파일 삭제 실패: {file_path}, 오류: {e}")
+        
+        # 데이터베이스에서 제품 삭제
         db.delete(db_product)
         db.commit()
     return db_product

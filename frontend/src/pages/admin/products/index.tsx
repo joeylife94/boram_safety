@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getProducts, getCategories, deleteProduct, Product, Category } from '@/api/admin';
-import { getImageUrl } from '@/utils/image';
+import { getProductImageUrl } from '@/utils/image';
 
 const AdminProductsPage = () => {
   const router = useRouter();
@@ -224,7 +224,7 @@ const AdminProductsPage = () => {
                           <div className="flex-shrink-0 h-12 w-12">
                             <img
                               className="h-12 w-12 rounded-lg object-cover border"
-                              src={getImageUrl(product.file_path)}
+                              src={getProductImageUrl(product)}
                               alt={product.name}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;

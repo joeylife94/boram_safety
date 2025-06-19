@@ -12,8 +12,7 @@ interface ProductForm {
   price: string;
   manufacturer: string;
   is_featured: boolean;
-  image_file: File | null;
-  display_order: string;
+  image_files: FileList | null;
 }
 
 const NewProductPage = () => {
@@ -27,8 +26,7 @@ const NewProductPage = () => {
     price: '',
     manufacturer: '',
     is_featured: false,
-    image_file: null,
-    display_order: '0'
+    image_files: null
   });
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,19 +65,25 @@ const NewProductPage = () => {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = e.target.files;
+    if (files && files.length > 0) {
       setFormData(prev => ({
         ...prev,
-        image_file: file
+        image_files: files
       }));
 
-      // 이미지 미리보기
+      // 첫 번째 이미지 미리보기
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(files[0]);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        image_files: null
+      }));
+      setImagePreview(null);
     }
   };
 
@@ -91,34 +95,49 @@ const NewProductPage = () => {
     try {
       let imagePath = '';
 
-      // 이미지가 있다면 먼저 업로드
-      if (formData.image_file) {
-        const imageResponse = await uploadImage(formData.image_file);
-        imagePath = imageResponse.url;
+      // 제품 데이터 생성 (FormData 사용)
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('model_number', formData.model);
+      formDataToSend.append('category_id', formData.category_id);
+      formDataToSend.append('is_featured', formData.is_featured ? '1' : '0');
+      formDataToSend.append('display_order', '0');
+      
+      if (formData.description) {
+        formDataToSend.append('description', formData.description);
+      }
+      if (formData.specifications) {
+        formDataToSend.append('specifications', formData.specifications);
+      }
+      if (formData.price) {
+        formDataToSend.append('price', formData.price);
+      }
+      if (formData.manufacturer) {
+        formDataToSend.append('manufacturer', formData.manufacturer);
       }
 
-      // 제품 데이터 생성
-      const productData: ProductCreateData = {
-        name: formData.name,
-        model: formData.model,
-        category_id: parseInt(formData.category_id),
-        description: formData.description || undefined,
-        specifications: formData.specifications || undefined,
-        price: formData.price ? parseFloat(formData.price) : undefined,
-        manufacturer: formData.manufacturer || undefined,
-        is_featured: formData.is_featured,
-        display_order: parseInt(formData.display_order)
-      };
+      // 여러 이미지 파일 추가
+      if (formData.image_files && formData.image_files.length > 0) {
+        Array.from(formData.image_files).forEach(file => {
+          formDataToSend.append('images', file);
+        });
+      }
 
-      // 제품 생성 (이미지 파일과 함께)
-      const imageFiles = formData.image_file ? [formData.image_file] : undefined;
-      await createProduct(productData, imageFiles);
+      const response = await fetch('http://localhost:8000/api/admin/products', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        throw new Error('제품 생성에 실패했습니다.');
+      }
       
       // 성공 시 제품 목록으로 이동
       router.push('/admin/products');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating product:', error);
-      setError('제품 생성 중 오류가 발생했습니다.');
+      console.error('Error response:', error.response?.data);
+      setError(error.response?.data?.detail || '제품 생성 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -266,17 +285,7 @@ const NewProductPage = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">표시 순서</label>
-                <input
-                  type="number"
-                  name="display_order"
-                  value={formData.display_order}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="0"
-                />
-              </div>
+
             </div>
 
             <div className="mt-6">
@@ -322,14 +331,15 @@ const NewProductPage = () => {
             <h2 className="text-lg font-semibold text-gray-900 mb-6">제품 이미지</h2>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">이미지 파일</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">이미지 파일 (여러 개 선택 가능)</label>
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-              <p className="text-sm text-gray-500 mt-1">JPG, PNG 파일만 업로드 가능합니다.</p>
+              <p className="text-sm text-gray-500 mt-1">JPG, PNG 파일만 업로드 가능합니다. 여러 개 선택 가능합니다.</p>
             </div>
 
             {imagePreview && (

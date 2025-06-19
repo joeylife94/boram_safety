@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { getProductById, getCategoryByCode } from '@/api/product';
 import { SafetyProduct, SafetyCategory } from '@/types/product';
-import { getProductImageUrl } from '@/utils/image';
+import { getProductImageUrl, getImageUrl } from '@/utils/image';
 import Link from 'next/link';
 
 export default function ProductDetailPage() {
@@ -13,6 +13,7 @@ export default function ProductDetailPage() {
   const [categoryInfo, setCategoryInfo] = useState<SafetyCategory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // 안전한 placeholder 이미지
   const defaultPlaceholder = 'data:image/svg+xml;charset=utf-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"%3E%3Crect width="100%25" height="100%25" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23666666" font-family="Arial, sans-serif" font-size="18"%3E이미지 없음%3C/text%3E%3C/svg%3E';
@@ -35,6 +36,7 @@ export default function ProductDetailPage() {
           console.log('Product data:', productData); // 디버깅을 위한 로그
           setProduct(productData);
           setCategoryInfo(categoryData);
+          setCurrentImageIndex(0); // 새 제품이 로드될 때 이미지 인덱스 리셋
         } catch (err) {
           setError('제품 정보를 불러오는데 실패했습니다.');
           console.error('Error fetching product:', err);
@@ -82,15 +84,30 @@ export default function ProductDetailPage() {
   // specifications를 JSON으로 파싱
   let parsedSpecifications: Record<string, string> = {};
   try {
-    if (product.specifications) {
+    if (product?.specifications) {
       parsedSpecifications = JSON.parse(product.specifications);
     }
   } catch (e) {
     console.error('Error parsing specifications:', e);
   }
 
-  const productImageUrl = getProductImageUrl(product);
-  console.log(`Product: ${product.name}, Image URL: ${productImageUrl}`); // 디버깅
+  // 여러 이미지 처리
+  const getProductImages = (product: SafetyProduct): string[] => {
+    if (!product.file_path) return [defaultPlaceholder];
+    
+    try {
+      // JSON 배열로 저장된 경우
+      const paths = JSON.parse(product.file_path);
+      return Array.isArray(paths) ? paths.map(path => getImageUrl(path)) : [getImageUrl(product.file_path)];
+    } catch {
+      // 단일 경로인 경우
+      return [getImageUrl(product.file_path)];
+    }
+  };
+
+  const productImages = product ? getProductImages(product) : [defaultPlaceholder];
+  
+  console.log(`Product: ${product?.name || 'Loading...'}, Images: ${productImages.length}개`); // 디버깅
 
   return (
     <Layout>
@@ -131,7 +148,7 @@ export default function ProductDetailPage() {
                 <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
                 </svg>
-                <span className="ml-1 text-sm font-medium text-gray-500 md:ml-2">{product.name}</span>
+                <span className="ml-1 text-sm font-medium text-gray-500 md:ml-2">{product?.name}</span>
               </div>
             </li>
           </ol>
@@ -141,22 +158,77 @@ export default function ProductDetailPage() {
       {/* Product Detail */}
       <div className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Product Image */}
+          {/* Product Images */}
           <div className="space-y-4">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <img
-                src={productImageUrl}
-                alt={product.name}
+                src={productImages[Math.min(currentImageIndex, productImages.length - 1)]}
+                alt={`${product?.name || 'Product'} - 이미지 ${currentImageIndex + 1}`}
                 className="w-full h-auto object-cover bg-gray-100"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   if (target.src !== defaultPlaceholder) {
-                    console.log(`Product detail image failed for: ${product.name}, using fallback`);
+                    console.log(`Product detail image failed for: ${product?.name || 'Unknown'}, using fallback`);
                     target.src = defaultPlaceholder;
                   }
                 }}
               />
             </div>
+            
+            {/* 이미지 썸네일 및 네비게이션 */}
+            {productImages.length > 1 && (
+              <div className="space-y-3">
+                {/* 이미지 네비게이션 버튼 */}
+                <div className="flex justify-between items-center">
+                  <button
+                    onClick={() => setCurrentImageIndex(prev => prev > 0 ? prev - 1 : productImages.length - 1)}
+                    className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
+                    disabled={productImages.length <= 1}
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  
+                  <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm">
+                    {currentImageIndex + 1} / {productImages.length}
+                  </span>
+                  
+                  <button
+                    onClick={() => setCurrentImageIndex(prev => prev < productImages.length - 1 ? prev + 1 : 0)}
+                    className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
+                    disabled={productImages.length <= 1}
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+                
+                {/* 썸네일 이미지들 */}
+                <div className="flex space-x-2 overflow-x-auto pb-2">
+                  {productImages.map((imageUrl, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
+                        currentImageIndex === index ? 'border-blue-500' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <img
+                        src={imageUrl}
+                        alt={`${product?.name || 'Product'} 썸네일 ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = defaultPlaceholder;
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
@@ -164,10 +236,10 @@ export default function ProductDetailPage() {
             {/* Product Title and Features */}
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                {product.name}
+                {product?.name}
               </h1>
               
-              {product.model_number && (
+              {product?.model_number && (
                 <p className="text-lg text-gray-600 mb-4">
                   모델번호: {product.model_number}
                 </p>
@@ -175,34 +247,41 @@ export default function ProductDetailPage() {
 
               <div className="flex flex-wrap gap-2 mb-4">
                 <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full border border-blue-200">
-                  {categoryInfo.name}
+                  {categoryInfo?.name}
                 </span>
-                {product.is_featured === 1 && (
+                {product?.is_featured === 1 && (
                   <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm font-medium rounded-full border border-yellow-200">
                     추천 제품
                   </span>
                 )}
                 <span className={`px-3 py-1 text-sm font-medium rounded-full border ${
-                  product.stock_status === 'in_stock' 
+                  product?.stock_status === 'in_stock' 
                     ? 'bg-green-100 text-green-700 border-green-200' 
                     : 'bg-red-100 text-red-700 border-red-200'
                 }`}>
-                  {product.stock_status === 'in_stock' ? '재고 있음' : '재고 없음'}
+                  {product?.stock_status === 'in_stock' ? '재고 있음' : '재고 없음'}
                 </span>
               </div>
             </div>
 
             {/* Price */}
-            {product.price && (
-              <div className="py-4 border-t border-b border-gray-200">
+            <div className="py-4 border-t border-b border-gray-200">
+              {product?.price ? (
                 <p className="text-3xl font-bold text-blue-600">
                   ₩{product.price.toLocaleString()}
                 </p>
-              </div>
-            )}
+              ) : (
+                <div className="flex items-center space-x-3">
+                  <p className="text-2xl font-bold text-gray-600">가격 문의</p>
+                  <span className="px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full border border-orange-200">
+                    상담 후 결정
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Description */}
-            {product.description && (
+            {product?.description && (
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
                   제품 설명
@@ -235,14 +314,8 @@ export default function ProductDetailPage() {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <button
-                onClick={() => router.push('/')}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold text-lg transition-colors duration-300"
-              >
-                견적 문의하기
-              </button>
-              <button
                 onClick={() => router.back()}
-                className="flex-1 border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 py-3 px-6 rounded-lg font-semibold text-lg transition-colors duration-300"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold text-lg transition-colors duration-300"
               >
                 이전으로 돌아가기
               </button>

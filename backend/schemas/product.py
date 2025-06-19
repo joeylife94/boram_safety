@@ -14,7 +14,8 @@ class ProductBase(BaseModel):
     display_order: int = 0
 
 class ProductCreate(ProductBase):
-    pass
+    file_name: Optional[str] = "default.jpg"
+    file_path: Optional[str] = "/images/default.jpg"
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
@@ -26,6 +27,8 @@ class ProductUpdate(BaseModel):
     stock_status: Optional[str] = None
     is_featured: Optional[int] = None
     display_order: Optional[int] = None
+    file_name: Optional[str] = None
+    file_path: Optional[str] = None
 
 class ProductResponse(ProductBase):
     id: int

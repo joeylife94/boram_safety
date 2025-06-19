@@ -1,9 +1,10 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float
 from sqlalchemy.sql import func
-from backend.database import Base
+from database import Base
 
 class SafetyCategory(Base):
     __tablename__ = "safety_categories"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
@@ -18,6 +19,7 @@ class SafetyCategory(Base):
 
 class SafetyProduct(Base):  # SafetyItemsImages를 SafetyProduct로 확장
     __tablename__ = "safety_products"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("safety_categories.id", ondelete="CASCADE"), nullable=False)

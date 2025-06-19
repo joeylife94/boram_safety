@@ -58,15 +58,44 @@ function createPlaceholderImage(text: string, width: number = 400, height: numbe
 }
 
 /**
- * 제품 이미지 URL 가져오기
+ * 여러 이미지 경로에서 첫 번째 이미지(대표 이미지) 추출
+ * @param imagePath JSON 배열 또는 단일 경로
+ * @returns 첫 번째 이미지 경로
+ */
+export function getMainImagePath(imagePath: string | undefined | null): string | null {
+  if (!imagePath) return null;
+  
+  try {
+    // JSON 배열로 저장된 경우
+    const paths = JSON.parse(imagePath);
+    if (Array.isArray(paths) && paths.length > 0) {
+      return paths[0];
+    }
+    // JSON이지만 배열이 아닌 경우 (단일 경로)
+    return String(paths);
+  } catch {
+    // JSON 파싱 실패시 단일 경로로 처리
+    return imagePath;
+  }
+}
+
+/**
+ * 제품 이미지 URL 가져오기 (여러 이미지 지원)
  * @param product 제품 객체
- * @returns 제품 이미지 URL
+ * @returns 제품 대표 이미지 URL
  */
 export function getProductImageUrl(product: { file_path?: string; name?: string }): string {
   if (!product.file_path) {
     return createPlaceholderImage('No Product Image');
   }
-  return getImageUrl(product.file_path);
+  
+  // 여러 이미지 중 첫 번째 이미지(대표 이미지) 추출
+  const mainImagePath = getMainImagePath(product.file_path);
+  if (!mainImagePath) {
+    return createPlaceholderImage('No Product Image');
+  }
+  
+  return getImageUrl(mainImagePath);
 }
 
 /**

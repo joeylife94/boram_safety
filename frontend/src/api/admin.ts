@@ -50,7 +50,7 @@ export interface Product {
   description?: string;
   specifications?: string;
   price?: number;
-  is_featured: boolean;
+  is_featured: number;
   file_path?: string;
   display_order: number;
   created_at: string;
@@ -64,7 +64,7 @@ export interface ProductCreateData {
   description?: string;
   specifications?: string;
   price?: number;
-  is_featured: boolean;
+  is_featured: number;
   display_order: number;
 }
 
@@ -75,7 +75,7 @@ export interface ProductUpdateData {
   description?: string;
   specifications?: string;
   price?: number;
-  is_featured?: boolean;
+  is_featured?: number;
   display_order?: number;
 }
 
@@ -124,7 +124,12 @@ export const createProduct = async (data: ProductCreateData, imageFiles?: File[]
   return response.data;
 };
 
-export const updateProduct = async (id: number, data: ProductUpdateData, imageFiles?: File[]): Promise<Product> => {
+export const updateProduct = async (
+  id: number, 
+  data: ProductUpdateData, 
+  imageFiles?: File[], 
+  existingImages?: string[]
+): Promise<Product> => {
   const formData = new FormData();
   
   // Add only the fields that are being updated
@@ -137,7 +142,12 @@ export const updateProduct = async (id: number, data: ProductUpdateData, imageFi
   if (data.is_featured !== undefined) formData.append('is_featured', data.is_featured.toString());
   if (data.display_order !== undefined) formData.append('display_order', data.display_order.toString());
   
-  // Add image files if provided
+  // Add existing images that should be kept (with their order)
+  if (existingImages) {
+    formData.append('existing_images', JSON.stringify(existingImages));
+  }
+  
+  // Add new image files if provided
   if (imageFiles && imageFiles.length > 0) {
     imageFiles.forEach((file, index) => {
       formData.append('images', file);

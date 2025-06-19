@@ -23,7 +23,7 @@ export default function Navbar() {
             {/* Logo */}
             <Link href="/" className="flex-shrink-0">
               <span className="text-xl md:text-2xl font-bold text-gray-900">
-                BORAM SAFETY
+                보람안전물산(주)
               </span>
             </Link>
 

@@ -45,8 +45,9 @@ const EditProductPage = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentImagePath, setCurrentImagePath] = useState<string | null>(null);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
+
+  // utils의 getImageUrl 함수를 사용
 
   useEffect(() => {
     if (productId && !isNaN(productId)) {
@@ -68,26 +69,49 @@ const EditProductPage = () => {
       // 폼 데이터 설정
       setFormData({
         name: product.name,
-        model: product.model,
+        model: product.model_number,
         category_id: product.category_id.toString(),
         description: product.description || '',
         specifications: product.specifications || '',
         price: product.price?.toString() || '',
-        manufacturer: product.manufacturer || '',
-        is_featured: product.is_featured,
+        manufacturer: '',
+        is_featured: product.is_featured === 1,
         display_order: product.display_order.toString()
       });
       
       setCategories(categoriesData);
       
-      // 현재 이미지 설정
+      // 현재 이미지 설정 (여러 이미지 지원)
       if (product.file_path) {
-        setCurrentImagePath(product.file_path);
-        setImagePreviews([{
-          id: 'current',
-          url: product.file_path,
-          isNew: false
-        }]);
+        try {
+          // JSON 배열로 저장된 경우
+          const imagePaths = JSON.parse(product.file_path);
+          if (Array.isArray(imagePaths)) {
+            setCurrentImagePath(imagePaths[0]); // 첫 번째 이미지를 메인으로
+            const previews = imagePaths.map((path, index) => ({
+              id: `existing-${index}`,
+              url: path,
+              isNew: false
+            }));
+            setImagePreviews(previews);
+          } else {
+            // 단일 경로인 경우
+            setCurrentImagePath(product.file_path);
+            setImagePreviews([{
+              id: 'current',
+              url: product.file_path,
+              isNew: false
+            }]);
+          }
+        } catch {
+          // JSON 파싱 실패시 단일 경로로 처리
+          setCurrentImagePath(product.file_path);
+          setImagePreviews([{
+            id: 'current',
+            url: product.file_path,
+            isNew: false
+          }]);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching data:', error);
@@ -118,9 +142,6 @@ const EditProductPage = () => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const newFiles = [...imageFiles, ...files];
-    setImageFiles(newFiles);
-
     // 새로운 미리보기 생성
     const newPreviews: ImagePreview[] = files.map((file, index) => ({
       id: `new-${Date.now()}-${index}`,
@@ -142,13 +163,7 @@ const EditProductPage = () => {
       return prev.filter(img => img.id !== imageId);
     });
 
-    // 새 파일이라면 파일 목록에서도 제거
-    if (imageId.startsWith('new-')) {
-      const index = imagePreviews.findIndex(img => img.id === imageId && img.isNew);
-      if (index !== -1) {
-        setImageFiles(prev => prev.filter((_, i) => i !== index));
-      }
-    }
+
 
     // 현재 이미지라면 null로 설정
     if (imageId === 'current') {
@@ -174,18 +189,32 @@ const EditProductPage = () => {
       // 제품 데이터 준비
       const productData: ProductUpdateData = {
         name: formData.name,
-        model: formData.model,
+        model_number: formData.model,
         category_id: parseInt(formData.category_id),
         description: formData.description || undefined,
         specifications: formData.specifications || undefined,
         price: formData.price ? parseFloat(formData.price) : undefined,
-        manufacturer: formData.manufacturer || undefined,
-        is_featured: formData.is_featured,
-        display_order: parseInt(formData.display_order)
+        is_featured: formData.is_featured ? 1 : 0,
+        display_order: 0
       };
 
-      // 제품 업데이트
-      await updateProduct(productId, productData, imageFiles);
+      // 유지할 기존 이미지들 (순서 포함)
+      const existingImagePaths = imagePreviews
+        .filter(img => !img.isNew)
+        .map(img => img.url);
+
+      // 새로 선택된 이미지 파일들
+      const newImageFiles = imagePreviews
+        .filter(img => img.isNew && img.file)
+        .map(img => img.file!);
+
+      // 제품 업데이트 (기존 이미지 순서와 새 이미지 포함)
+      await updateProduct(
+        productId, 
+        productData, 
+        newImageFiles.length > 0 ? newImageFiles : undefined,
+        existingImagePaths  // 기존 이미지 순서 정보 전달
+      );
       
       // 성공 시 제품 목록으로 이동
       router.push('/admin/products');
@@ -269,7 +298,7 @@ const EditProductPage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="ml-3">
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-800">{typeof error === 'string' ? error : JSON.stringify(error)}</p>
               </div>
               <button
                 onClick={() => setError(null)}
@@ -370,20 +399,7 @@ const EditProductPage = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  표시 순서
-                </label>
-                <input
-                  type="number"
-                  name="display_order"
-                  value={formData.display_order}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="표시 순서"
-                  min="0"
-                />
-              </div>
+
             </div>
 
             <div className="mt-6">

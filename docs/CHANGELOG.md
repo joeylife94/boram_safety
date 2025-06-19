@@ -1,5 +1,54 @@
 # Changelog - Boram Safety
 
+## [v1.3] - 2024-12-16 - Image System & UI Refinements ⭐
+
+### 🎨 UI/UX Improvements
+- **Header Branding Update**
+  - "BORAM SAFETY" → "보람안전물산(주)" 브랜드명 변경
+  - 공식 회사명으로 통일하여 브랜드 일관성 확보
+
+### 🖼️ Critical Image System Fixes
+- **기존 제품 이미지 표시 문제 해결**
+  - 문제: 기존 더미 데이터 제품들의 이미지가 표시되지 않음
+  - 원인: 데이터베이스에 `/static/images/` 경로로 저장되어 있으나 실제 이미지는 `/images/`에 위치
+  - 해결: 데이터베이스 마이그레이션으로 이미지 경로 표준화
+    - 252개 제품의 이미지 경로 업데이트: `/static/images/` → `/images/`
+    - 11개 카테고리의 이미지 경로 업데이트
+    - 기존 제품과 새 제품 이미지 표시 일관성 확보
+
+- **이미지 처리 로직 개선**
+  - 공개 제품 상세 페이지에서 하드코딩된 백엔드 URL 제거
+  - `getImageUrl()` 유틸리티 함수 사용으로 통일
+  - 여러 이미지 처리 시 JSON 배열 파싱 로직 안정화
+
+### 🔧 Backend Improvements
+- **모델 import 경로 수정**
+  - `from backend.database import Base` → `from database import Base`
+  - 모듈 경로 표준화로 import 오류 해결
+  - 마이그레이션 스크립트 실행 환경 개선
+
+### 📊 Database Migration Results
+- **성공적인 이미지 경로 마이그레이션**
+  - 총 처리된 제품: 252개
+  - 총 처리된 카테고리: 11개
+  - 모든 기존 제품 이미지 정상 표시 확인
+  - 데이터 무결성 보장
+
+### ✅ Quality Assurance
+- **통합 테스트 준비**
+  - 로컬 개발 서버 테스트 가이드 제공
+  - 주요 기능별 테스트 체크리스트 작성
+  - Postman API 테스트 보조 방법 제시
+
+### 🛠️ Technical Improvements
+- **코드 품질 향상**
+  - TypeScript import 정리
+  - 에러 처리 개선
+  - 임시 마이그레이션 파일 정리
+  - 코드 가독성 향상
+
+---
+
 ## [v1.2] - 2024-12-13 - Admin Panel Complete ⭐
 
 ### 🎉 Major Features Added

@@ -55,6 +55,54 @@ cd frontend
 npm install
 ```
 
+## 🧪 로컬 테스트 가이드
+
+### 전체 기능 테스트 (권장)
+
+#### 1단계: 백엔드 서버 실행
+```bash
+# 터미널 1
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+→ http://localhost:8000 (API 문서: http://localhost:8000/docs)
+
+#### 2단계: 프론트엔드 서버 실행
+```bash
+# 터미널 2 (새 터미널)
+cd frontend
+npm run dev
+```
+→ http://localhost:3000
+
+### 주요 테스트 체크리스트
+
+#### 공개 페이지 테스트
+- [ ] **메인 페이지**: http://localhost:3000
+  - Header에 "보람안전물산(주)" 표시 확인
+- [ ] **제품 목록**: http://localhost:3000/products
+  - 카테고리별 제품 표시 확인
+- [ ] **제품 상세**: 아무 제품 클릭
+  - 기존 제품 이미지 정상 표시 확인 ⭐
+  - 여러 이미지 슬라이더 동작 확인
+
+#### 관리자 페이지 테스트
+- [ ] **관리자 대시보드**: http://localhost:3000/admin
+  - 통계 정보 확인
+- [ ] **제품 관리**: http://localhost:3000/admin/products
+  - 제품 목록에서 대표 이미지 표시 확인 ⭐
+  - 새 제품 생성 (여러 이미지 업로드)
+  - 제품 편집 (이미지 추가/삭제/순서 변경)
+
+### API 단독 테스트 (Postman 등)
+
+#### 주요 API 엔드포인트
+- `GET /api/categories` - 카테고리 목록
+- `GET /api/products` - 제품 목록
+- `GET /api/products/{id}` - 제품 상세 (이미지 경로 확인 ⭐)
+- `POST /api/admin/products` - 제품 생성 (FormData)
+- `PUT /api/admin/products/{id}` - 제품 수정 (FormData)
+
 ## 📋 개발 워크플로우
 
 ### 새 기능 개발 시작
