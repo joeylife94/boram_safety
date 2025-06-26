@@ -1,6 +1,69 @@
-# 배포 가이드 - Boram Safety (v1.2)
+# 배포 가이드 - Boram Safety (v2.0 - Docker)
 
-## 🚀 프로덕션 배포 준비
+이 문서는 보람안전 프로젝트를 서버에 배포하는 방법을 안내합니다. 배포 방식은 크게 두 가지가 있습니다.
+
+1.  **Docker를 이용한 간편 배포 (권장)**: `docker-compose` 명령 한 줄로 전체 스택(Frontend, Backend, DB)을 실행합니다. 환경 분리, 쉬운 확장, 일관된 실행 환경의 장점이 있습니다.
+2.  **서버에 직접 배포 (고급)**: 서버에 직접 Node.js, Python, PostgreSQL 등을 설치하고 설정하는 전통적인 방식입니다. 시스템에 대한 깊은 이해가 필요합니다.
+
+---
+
+## 🐳 Docker를 이용한 간편 배포 (권장)
+
+이 방식은 서버에 [Docker](https://docs.docker.com/get-docker/)와 [Docker Compose](https://docs.docker.com/compose/install/)가 설치되어 있는 것을 전제로 합니다.
+
+### 1. 프로젝트 준비
+```bash
+# 프로젝트 클론
+git clone https://github.com/joeylife94/boram_safety.git
+cd boram-safety
+```
+
+### 2. 환경 변수 설정
+프로젝트 최상단에 `.env` 파일을 생성하고 아래 내용을 채웁니다. 이 값들은 `docker-compose.yml`에서 참조하여 각 컨테이너의 환경변수로 사용됩니다.
+
+```env
+# .env 파일 예시
+# PostgreSQL Database
+DB_USER=boramadmin
+DB_PASSWORD=supersecretpassword
+DB_NAME=boramsafetydb
+
+# Frontend에서 사용할 Backend API 주소
+# Docker 네트워크 내부에서는 서비스 이름으로 통신하지만,
+# 사용자의 브라우저에서는 이 주소를 보고 API를 호출하므로 외부에서 접근 가능한 주소를 적어줍니다.
+# 예: http://localhost:8000 또는 http://your-domain.com/api
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### 3. 애플리케이션 실행
+아래 명령어를 실행하면 Docker 이미지를 빌드하고 3개의 컨테이너(db, backend, frontend)를 실행합니다.
+
+```bash
+# --build 옵션으로 이미지를 새로 빌드하며 컨테이너를 시작합니다.
+# -d 옵션은 백그라운드에서 실행합니다.
+docker-compose up --build -d
+```
+
+### 4. 실행 확인
+- **Frontend**: 브라우저에서 `http://localhost:3000`으로 접속
+- **Backend API**: `http://localhost:8000/docs`로 접속하여 FastAPI 문서 확인
+- **컨테이너 상태 확인**: `docker-compose ps`
+- **로그 확인**: `docker-compose logs -f [서비스이름]` (예: `docker-compose logs -f frontend`)
+
+### 5. 애플리케이션 종료
+```bash
+# 컨테이너를 중지하고 제거합니다.
+docker-compose down
+
+# 데이터베이스 볼륨까지 완전히 삭제하려면 아래 명령을 사용합니다.
+# docker-compose down --volumes
+```
+
+---
+
+## 🛠️ 서버에 직접 배포 (고급)
+
+이 섹션은 서버에 직접 Python, Node.js, PostgreSQL 등을 설치하여 배포하는 방법을 안내합니다.
 
 ### 시스템 요구사항
 

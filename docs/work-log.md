@@ -2,6 +2,20 @@
 
 ## 2025년 6월
 
+### 6월 4일 - Stage 5: Docker 기반 배포 환경 구축
+- [x] **전체 애플리케이션 Docker 컨테이너화**
+  - [x] Backend Dockerfile 작성 (FastAPI, uvicorn)
+  - [x] Frontend Dockerfile 작성 (Next.js, Multi-stage build 적용)
+  - [x] `next.config.js`에 `standalone` 옵션 추가하여 이미지 최적화
+- [x] **Docker Compose 통합 관리**
+  - [x] `docker-compose.yml` 작성 (frontend, backend, db 서비스 정의)
+  - [x] `postgres_data` 볼륨을 사용한 데이터베이스 영속성 확보
+  - [x] `.env` 파일을 통한 환경변수 관리 설정
+- [x] **빌드 최적화**
+  - [x] `.dockerignore` 파일 추가하여 불필요한 파일 빌드 컨텍스트에서 제외
+- [x] **코드 정리**
+  - [x] 홈페이지(`index.tsx`)에서 미사용 `useRouter` 훅 제거
+
 ### 6월 3일 - Stage 4: Backend ↔ Frontend ↔ DB 통합 완료
 - [x] **이미지 시스템 완전 재구성**
   - [x] 254개 이미지 파일 마이그레이션 (`backend/static/images/` → `frontend/public/images/`)

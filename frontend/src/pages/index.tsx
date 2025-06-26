@@ -1,4 +1,3 @@
-import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { getCategories } from '@/api/product';
@@ -7,7 +6,6 @@ import { getCategoryImageUrl } from '@/utils/image';
 import Link from 'next/link';
 
 const HomePage = () => {
-  const router = useRouter();
   const [categories, setCategories] = useState<SafetyCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
