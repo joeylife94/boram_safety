@@ -1,74 +1,77 @@
 import { FC } from 'react';
-import {
-  Box,
-  Grid,
-  Typography,
-  Paper,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-} from '@mui/material';
-import Image from 'next/image';
 import { Product } from '@/types/product';
+import SafeImage from '@/components/common/SafeImage';
+import { getImageUrl } from '@/utils/image';
 
 interface ProductDetailProps {
   product: Product;
 }
 
 export const ProductDetail: FC<ProductDetailProps> = ({ product }) => {
+  const imageUrl = getImageUrl(product.image || '');
+  
   return (
-    <Paper elevation={0}>
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={6}>
-          <Box position="relative" width="100%" height={400}>
-            <Image
-              src={product.image}
-              alt={product.name}
-              layout="fill"
-              objectFit="contain"
-            />
-          </Box>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Typography variant="h4" component="h1" gutterBottom>
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Image Section */}
+        <div className="relative w-full h-96">
+          <SafeImage
+            src={imageUrl}
+            alt={product.name}
+            fill
+            className="object-contain"
+          />
+        </div>
+        
+        {/* Content Section */}
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
             {product.name}
-          </Typography>
-          <Typography variant="h6" color="primary" gutterBottom>
-            ₩{product.price.toLocaleString()}
-          </Typography>
-          <Typography variant="body1" paragraph>
+          </h1>
+          <p className="text-2xl font-semibold text-blue-600 mb-4">
+            ₩{product.price?.toLocaleString() || 'N/A'}
+          </p>
+          <p className="text-base text-gray-700 mb-6">
             {product.description}
-          </Typography>
+          </p>
           
-          <Typography variant="h6" gutterBottom>
-            Features
-          </Typography>
-          <List>
-            {product.features.map((feature, index) => (
-              <ListItem key={index}>
-                <ListItemText primary={feature} />
-              </ListItem>
-            ))}
-          </List>
+          {/* Features */}
+          {product.features && product.features.length > 0 && (
+            <>
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">
+                주요 특징
+              </h2>
+              <ul className="space-y-2 mb-6">
+                {product.features.map((feature: string, index: number) => (
+                  <li key={index} className="flex items-start">
+                    <span className="text-blue-600 mr-2">•</span>
+                    <span className="text-gray-700">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           
-          <Divider sx={{ my: 2 }} />
+          <hr className="my-6 border-gray-200" />
           
-          <Typography variant="h6" gutterBottom>
-            Specifications
-          </Typography>
-          <List>
-            {Object.entries(product.specifications).map(([key, value]) => (
-              <ListItem key={key}>
-                <ListItemText
-                  primary={key}
-                  secondary={value}
-                />
-              </ListItem>
-            ))}
-          </List>
-        </Grid>
-      </Grid>
-    </Paper>
+          {/* Specifications */}
+          {product.specifications && Object.keys(product.specifications).length > 0 && (
+            <>
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">
+                상세 사양
+              </h2>
+              <dl className="space-y-3">
+                {Object.entries(product.specifications).map(([key, value]) => (
+                  <div key={key} className="flex flex-col">
+                    <dt className="text-sm font-medium text-gray-900">{key}</dt>
+                    <dd className="text-sm text-gray-600 mt-1">{value as string}</dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }; 

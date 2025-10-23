@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
-from backend.database import get_db
+from database import get_db
 
-from backend.crud import company as company_crud
-from backend.core.constants import COMPANY_INFO, COMPANY_HISTORY, CERTIFICATIONS, MAJOR_CLIENTS
+from crud import company as company_crud
+from core.constants import COMPANY_INFO, COMPANY_HISTORY, CERTIFICATIONS, MAJOR_CLIENTS
 
-from backend.schemas.company import CompanyInfo, History, Certification, Client
-from backend.schemas.safety import SafetyCategory, SafetyCategoryResponse, SafetyProductResponse
-from backend.models.safety import SafetyCategory as DBSafetyCategory, SafetyProduct as DBSafetyProduct
+from schemas.company import CompanyInfo, History, Certification, Client
+from schemas.safety import SafetyCategory, SafetyCategoryResponse, SafetyProductResponse
+from models.safety import SafetyCategory as DBSafetyCategory, SafetyProduct as DBSafetyProduct
 
 
 router = APIRouter(

@@ -1,2 +1,2 @@
 
-from backend.crud import company, product, category
+from crud import company, product, category

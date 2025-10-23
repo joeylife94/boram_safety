@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getSearchSuggestions, SearchSuggestion } from '@/api/product';
-import { getProductImageUrl } from '@/utils/image';
+import { getProductImageUrl, ProductWithImage } from '@/utils/image';
+import SafeImage from '@/components/common/SafeImage';
 
 const Header = () => {
   const router = useRouter();
@@ -143,14 +144,13 @@ const Header = () => {
                         onClick={() => handleSuggestionClick(suggestion)}
                         className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-gray-50 transition-colors text-left"
                       >
-                        <img
-                          src={getProductImageUrl({ file_path: suggestion.file_path } as any)}
+                        <SafeImage
+                          src={getProductImageUrl({ file_path: suggestion.file_path, name: suggestion.name } as ProductWithImage)}
                           alt={suggestion.name}
                           className="w-12 h-12 object-cover rounded border bg-gray-100"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = 'data:image/svg+xml;charset=utf-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"%3E%3Crect width="100%25" height="100%25" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23666666" font-family="Arial, sans-serif" font-size="10"%3E이미지%3C/text%3E%3C/svg%3E';
-                          }}
+                          width={48}
+                          height={48}
+                          fallbackText="이미지"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">

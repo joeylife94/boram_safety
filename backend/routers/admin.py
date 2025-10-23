@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
-from backend.database import get_db
-from backend.crud import product as product_crud
-from backend.crud import category as category_crud
-from backend.schemas.product import ProductResponse, ProductCreate, ProductUpdate
-from backend.schemas.category import Category, CategoryCreate, CategoryUpdate
+from database import get_db
+from crud import product as product_crud
+from crud import category as category_crud
+from schemas.product import ProductResponse, ProductCreate, ProductUpdate
+from schemas.category import Category, CategoryCreate, CategoryUpdate
 
 router = APIRouter(
     tags=["admin"]

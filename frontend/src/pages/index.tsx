@@ -3,6 +3,7 @@ import Layout from '@/components/layout/Layout';
 import { getCategories } from '@/api/product';
 import { SafetyCategory } from '@/types/product';
 import { getCategoryImageUrl } from '@/utils/image';
+import SafeImage from '@/components/common/SafeImage';
 import Link from 'next/link';
 
 const HomePage = () => {
@@ -56,9 +57,6 @@ const HomePage = () => {
       {/* 주요 제품 카테고리 섹션 */}
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-6">
-          {/* Tailwind 적용 확인용 테스트 */}
-          <div className="bg-red-500 text-white p-4 mb-8 rounded">Tailwind 적용 확인 - 이 박스가 빨간색이면 Tailwind가 작동 중입니다</div>
-          
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">주요 제품 카테고리</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -89,20 +87,12 @@ const HomePage = () => {
                     className="group bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden"
                   >
                     <div className="w-full bg-gray-200 overflow-hidden flex items-center justify-center" style={{ aspectRatio: '1/1', minHeight: '200px' }}>
-                      <img
+                      <SafeImage
                         src={imageUrl}
                         alt={category.name}
                         className="max-w-full max-h-full object-contain p-4"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          const svg = `
-                            <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
-                              <rect width="100%" height="100%" fill="#f5f5f5"/>
-                              <text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#666666" font-family="Arial, sans-serif" font-size="16">이미지 없음</text>
-                          </svg>
-                          `;
-                          target.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-                        }}
+                        width={400}
+                        height={300}
                       />
                     </div>
                     <div className="p-4">

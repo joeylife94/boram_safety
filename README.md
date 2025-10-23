@@ -19,26 +19,40 @@
 - 완전한 제품/카테고리 CRUD 관리
 - 실시간 대시보드 통계
 - 다중 이미지 업로드 및 관리
-- 드래그 앤 드롭 이미지 순서 변경
 - 직관적인 관리자 인터페이스
 
 📱 **반응형 디자인**
 - 모든 디바이스에서 최적화된 사용자 경험
-- 모바일 우선 디자인 접근법
+- Tailwind CSS 기반 모던 UI
+
+🐳 **Docker 지원**
+- Docker Compose를 통한 원클릭 배포
+- 개발/프로덕션 환경 분리
+
+🧪 **테스트 커버리지**
+- 백엔드 API 테스트 (pytest, 78% 통과율)
+- 프론트엔드 컴포넌트 테스트 (Jest, React Testing Library)
+- 테스트 커버리지 32%
 
 ## 기술 스택
 
 ### Frontend
-- **Next.js 13+** - App Router, SSR/SSG
-- **TypeScript** - 타입 안전성
-- **Tailwind CSS** - 유틸리티 우선 CSS 프레임워크
-- **React** - 컴포넌트 기반 UI
+- **Next.js 14.1.0** - App Router, SSR/SSG
+- **TypeScript 5.3.3** - 타입 안전성
+- **Tailwind CSS 3.4.3** - 유틸리티 우선 CSS 프레임워크
+- **React 18.2.0** - 컴포넌트 기반 UI
+- **Jest & React Testing Library** - 테스트
 
 ### Backend
-- **FastAPI** - 고성능 Python 웹 프레임워크
-- **SQLAlchemy** - ORM 및 데이터베이스 관리
-- **PostgreSQL** - 관계형 데이터베이스
-- **Pydantic** - 데이터 검증 및 직렬화
+- **FastAPI 0.109.2** - 고성능 Python 웹 프레임워크
+- **SQLAlchemy 2.0.27** - ORM 및 데이터베이스 관리
+- **PostgreSQL 13** - 관계형 데이터베이스
+- **Pydantic v2** - 데이터 검증 및 직렬화
+- **pytest** - 테스트 프레임워크
+
+### Infrastructure
+- **Docker & Docker Compose** - 컨테이너화
+- **Nginx** - 리버스 프록시 (프로덕션)
 
 ## 프로젝트 구조
 
@@ -69,20 +83,58 @@
 
 ## 빠른 시작
 
-### 프론트엔드 실행
+### Docker Compose로 실행 (권장)
+
+```bash
+# 환경 변수 설정 (.env 파일 생성)
+cp .env.example .env
+# .env 파일에서 DB_PASSWORD 등 설정
+
+# 모든 서비스 실행
+docker-compose up -d
+
+# 데이터베이스 테이블 생성
+docker-compose exec backend python create_tables.py
+
+# 더미 데이터 추가 (선택사항)
+docker-compose exec backend python dummy_data.py
+
+# 서비스 확인
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:8000
+# API 문서: http://localhost:8000/docs
+```
+
+### 개발 환경에서 실행
+
+#### 프론트엔드
 
 ```bash
 cd frontend
 npm install
 npm run dev
+# http://localhost:3000
 ```
 
-### 백엔드 실행
+#### 백엔드
 
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# http://localhost:8000
+```
+
+#### 테스트 실행
+
+```bash
+# 백엔드 테스트
+cd backend
+pytest tests/ -v --cov=.
+
+# 프론트엔드 테스트  
+cd frontend
+npm test
 ```
 
 ## API 엔드포인트

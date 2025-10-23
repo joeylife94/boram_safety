@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from backend.models.safety import SafetyCategory, SafetyProduct
-from backend.schemas.category import CategoryCreate, CategoryUpdate
+from models.safety import SafetyCategory, SafetyProduct
+from schemas.category import CategoryCreate, CategoryUpdate
 
 def get_category_count(db: Session) -> int:
     """총 카테고리 수를 반환합니다."""

@@ -1,5 +1,5 @@
-from backend.database import SessionLocal
-from backend.models.safety import SafetyCategory, SafetyProduct
+from database import SessionLocal
+from models.safety import SafetyCategory, SafetyProduct
 
 def check_data():
     db = SessionLocal()

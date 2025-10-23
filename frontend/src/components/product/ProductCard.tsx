@@ -1,7 +1,8 @@
 import { FC } from 'react';
-import { Card, CardContent, CardMedia, Typography, Box } from '@mui/material';
 import { useRouter } from 'next/router';
 import { Product } from '@/types/product';
+import SafeImage from '@/components/common/SafeImage';
+import { getImageUrl } from '@/utils/image';
 
 interface ProductCardProps {
   product: Product;
@@ -10,46 +11,34 @@ interface ProductCardProps {
 
 export const ProductCard: FC<ProductCardProps> = ({ product, href }) => {
   const router = useRouter();
+  const imageUrl = getImageUrl(product.image || '');
 
   return (
-    <Card 
-      sx={{ 
-        height: '100%', 
-        display: 'flex', 
-        flexDirection: 'column',
-        cursor: 'pointer',
-        '&:hover': {
-          boxShadow: 6
-        }
-      }}
+    <div 
+      className="h-full flex flex-col cursor-pointer bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300"
       onClick={() => router.push(href)}
     >
-      <CardMedia
-        component="img"
-        height="200"
-        image={product.image}
-        alt={product.name}
-        sx={{ objectFit: 'contain', p: 2 }}
-      />
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Typography gutterBottom variant="h6" component="h2" noWrap>
+      <div className="relative w-full h-48 p-4">
+        <SafeImage
+          src={imageUrl}
+          alt={product.name}
+          fill
+          className="object-contain"
+        />
+      </div>
+      <div className="flex-grow p-4">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2 truncate">
           {product.name}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-        }}>
+        </h2>
+        <p className="text-sm text-gray-600 mb-3 overflow-hidden line-clamp-2">
           {product.description}
-        </Typography>
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="h6" color="primary">
-            ₩{product.price.toLocaleString()}
-          </Typography>
-        </Box>
-      </CardContent>
-    </Card>
+        </p>
+        <div className="mt-4">
+          <p className="text-xl font-bold text-blue-600">
+            ₩{product.price?.toLocaleString() || 'N/A'}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }; 

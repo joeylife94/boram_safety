@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 import psycopg2
 from sqlalchemy import create_engine, text
-from backend.database import SQLALCHEMY_DATABASE_URL, engine
+from database import SQLALCHEMY_DATABASE_URL, engine
 
 # Load environment variables
 load_dotenv()
@@ -88,7 +88,7 @@ def create_fresh_tables():
     """새로운 테이블 생성"""
     print("\n🏗️  새로운 테이블을 생성합니다...")
     try:
-        from backend.database import Base
+        from database import Base
         Base.metadata.create_all(bind=engine)
         print("✅ 테이블이 성공적으로 생성되었습니다!")
         

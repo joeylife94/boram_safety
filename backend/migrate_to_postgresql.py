@@ -6,7 +6,7 @@ import os
 import sys
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from backend.models.safety import SafetyCategory, SafetyProduct, Base
+from models.safety import SafetyCategory, SafetyProduct, Base
 
 # SQLite 연결
 sqlite_url = "sqlite:///./safety.db"

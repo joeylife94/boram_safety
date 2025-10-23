@@ -2,15 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-# 상대 경로로 import 수정
-import sys
-sys.path.append('..')
 from database import get_db
 from crud import product as product_crud
 from crud import category as category_crud
 from schemas.product import ProductResponse, ProductCreate, ProductUpdate
 from schemas.category import Category, CategoryCreate, CategoryUpdate
 from models.safety import SafetyProduct, SafetyCategory
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 # 🔐 Admin Router - 모든 CRUD 작업 허용
 router = APIRouter(

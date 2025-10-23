@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from backend.models.company import CompanyInfo, History, Certification, Client
-from backend.schemas.company import (
+from models.company import CompanyInfo, History, Certification, Client
+from schemas.company import (
     CompanyInfoUpdate,
     HistoryCreate, HistoryUpdate,
     CertificationCreate, CertificationUpdate,

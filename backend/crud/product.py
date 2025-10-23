@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
-from backend.models.safety import SafetyProduct, SafetyCategory
-from backend.schemas.product import ProductCreate, ProductUpdate
+from models.safety import SafetyProduct, SafetyCategory
+from schemas.product import ProductCreate, ProductUpdate
 
 def get_product_count(db: Session) -> int:
     """총 제품 수를 반환합니다."""

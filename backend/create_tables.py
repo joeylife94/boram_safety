@@ -1,7 +1,7 @@
-from backend.database import Base, engine
-from backend.models.safety import SafetyCategory, SafetyProduct
+from database import Base, engine
+from models.safety import SafetyCategory, SafetyProduct
 
-from backend.models.company import CompanyInfo, History, Certification, Client
+from models.company import CompanyInfo, History, Certification, Client
 
 print("Creating database tables...")
 

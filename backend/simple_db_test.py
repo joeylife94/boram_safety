@@ -73,8 +73,8 @@ def test_database():
             # 새 테이블 생성
             print("\n🏗️  새 테이블 생성 중...")
             try:
-                from backend.models.safety import SafetyCategory, SafetyProduct
-                from backend.database import Base
+                from models.safety import SafetyCategory, SafetyProduct
+                from database import Base
             except ImportError:
                 # backend 모듈을 찾을 수 없는 경우, 현재 디렉토리에서 직접 import
                 import sys

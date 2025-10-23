@@ -1,5 +1,5 @@
-from backend.database import SessionLocal, engine, Base
-from backend.models.safety import SafetyCategory, SafetyProduct
+from database import SessionLocal, engine, Base
+from models.safety import SafetyCategory, SafetyProduct
 from datetime import datetime
 import os
 import glob

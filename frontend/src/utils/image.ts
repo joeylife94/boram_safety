@@ -79,12 +79,18 @@ export function getMainImagePath(imagePath: string | undefined | null): string |
   }
 }
 
+// 제품 이미지 타입 정의
+export interface ProductWithImage {
+  file_path?: string;
+  name?: string;
+}
+
 /**
  * 제품 이미지 URL 가져오기 (여러 이미지 지원)
  * @param product 제품 객체
  * @returns 제품 대표 이미지 URL
  */
-export function getProductImageUrl(product: { file_path?: string; name?: string }): string {
+export function getProductImageUrl(product: ProductWithImage): string {
   if (!product.file_path) {
     return createPlaceholderImage('No Product Image');
   }
@@ -98,12 +104,20 @@ export function getProductImageUrl(product: { file_path?: string; name?: string 
   return getImageUrl(mainImagePath);
 }
 
+// 카테고리 이미지 타입 정의
+export interface CategoryWithImage {
+  image?: string;
+  image_path?: string;
+  name?: string;
+  code?: string;
+}
+
 /**
  * 카테고리 이미지 URL 가져오기 (Public용)
  * @param category 카테고리 객체
  * @returns 카테고리 이미지 URL
  */
-export function getCategoryImageUrl(category: { image?: string; image_path?: string; name?: string; code?: string }): string {
+export function getCategoryImageUrl(category: CategoryWithImage): string {
   // 카테고리 코드가 있으면 해당 이미지 파일을 찾기
   if (category.code) {
     return `/images/categories/${category.code}.jpg`;
@@ -121,7 +135,7 @@ export function getCategoryImageUrl(category: { image?: string; image_path?: str
  * @param category 카테고리 객체
  * @returns 카테고리 이미지 URL
  */
-export function getAdminCategoryImageUrl(category: { image?: string; name?: string; code?: string }): string {
+export function getAdminCategoryImageUrl(category: CategoryWithImage): string {
   // 카테고리 코드가 있으면 해당 이미지 파일을 찾기
   if (category.code) {
     return `/images/categories/${category.code}.jpg`;

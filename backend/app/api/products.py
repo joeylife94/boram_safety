@@ -2,8 +2,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Query, Depends, HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
-from backend.database import get_db
-from backend.models.safety import SafetyProduct, SafetyCategory
+from database import get_db
+from models.safety import SafetyProduct, SafetyCategory
 import logging
 
 logger = logging.getLogger(__name__)

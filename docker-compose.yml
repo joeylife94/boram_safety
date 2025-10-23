@@ -1,4 +1,4 @@
-version: '3.8'
+# Docker Compose version directive is obsolete in newer versions
 
 services:
   db:
@@ -11,7 +11,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
     ports:
-      - "5432:5432"
+      - "5434:5432"
     restart: unless-stopped
 
   backend:
@@ -25,7 +25,13 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - ENVIRONMENT=development
+      - FRONTEND_URL=http://localhost:3000
     depends_on:
       - db
     restart: unless-stopped

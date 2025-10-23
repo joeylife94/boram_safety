@@ -41,6 +41,7 @@ local_settings.py
 db.sqlite3
 instance/
 .webassets-cache
+logs/
 .env
 .venv
 env/

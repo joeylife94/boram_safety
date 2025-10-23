@@ -2,9 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-# 상대 경로로 import 수정
-import sys
-sys.path.append('..')
 from database import get_db
 from crud import product as product_crud
 from crud import category as category_crud
