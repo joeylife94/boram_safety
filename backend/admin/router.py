@@ -103,6 +103,16 @@ async def read_category(
 
 @router.post("/categories", response_model=Category)
 async def create_category(
+    category: CategoryCreate,
+    db: Session = Depends(get_db)
+):
+    """새로운 카테고리를 생성합니다 (JSON 지원)."""
+    logger.info(f"Creating category: {category.dict()}")
+    created_category = category_crud.create_category(db, category)
+    return created_category
+
+@router.post("/categories/form", response_model=Category)
+async def create_category_form(
     name: str = Form(...),
     code: str = Form(...),
     slug: str = Form(...),
@@ -114,15 +124,6 @@ async def create_category(
     """새로운 카테고리를 생성합니다 (FormData 지원)."""
     from schemas.category import CategoryCreate
     
-    # 디버깅: 받은 데이터 출력
-    print(f"=== CREATE CATEGORY ===")
-    print(f"name: {name}")
-    print(f"code: {code}")
-    print(f"slug: {slug}")
-    print(f"description: {description}")
-    print(f"display_order: {display_order}")
-    print(f"image: {image.filename if image else None}")
-    
     # CategoryCreate 객체 생성
     category_data = {
         'name': name.strip(),
@@ -132,18 +133,26 @@ async def create_category(
         'display_order': display_order or 0
     }
     
-    print(f"category_data to create: {category_data}")
-    
     category = CategoryCreate(**category_data)
-    print(f"CategoryCreate object: {category}")
-    
     created_category = category_crud.create_category(db, category)
-    print(f"Created category: {created_category}")
     
     return created_category
 
 @router.put("/categories/{category_id}", response_model=Category)
 async def update_category(
+    category_id: int,
+    category: CategoryUpdate,
+    db: Session = Depends(get_db)
+):
+    """카테고리 정보를 수정합니다 (JSON 지원)."""
+    logger.info(f"Updating category {category_id}: {category.dict(exclude_unset=True)}")
+    db_category = category_crud.update_category(db, category_id, category)
+    if db_category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return db_category
+
+@router.put("/categories/{category_id}/form", response_model=Category)
+async def update_category_form(
     category_id: int,
     name: Optional[str] = Form(None),
     code: Optional[str] = Form(None),
@@ -155,15 +164,6 @@ async def update_category(
 ):
     """카테고리 정보를 수정합니다 (FormData 지원)."""
     from schemas.category import CategoryUpdate
-    
-    # 디버깅: 받은 데이터 출력
-    print(f"=== UPDATE CATEGORY {category_id} ===")
-    print(f"name: {name}")
-    print(f"code: {code}")
-    print(f"slug: {slug}")
-    print(f"description: {description}")
-    print(f"display_order: {display_order}")
-    print(f"image: {image.filename if image else None}")
     
     # CategoryUpdate 객체 생성 (None이 아닌 값들만)
     category_data = {}
@@ -178,19 +178,14 @@ async def update_category(
     if display_order is not None:
         category_data['display_order'] = display_order
     
-    print(f"category_data to update: {category_data}")
-    
     if not category_data:
         raise HTTPException(status_code=400, detail="업데이트할 데이터가 없습니다")
     
     category = CategoryUpdate(**category_data)
-    print(f"CategoryUpdate object: {category}")
-    
     db_category = category_crud.update_category(db, category_id, category)
     if db_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
     
-    print(f"Updated category: {db_category}")
     return db_category
 
 @router.delete("/categories/{category_id}")
@@ -231,31 +226,29 @@ async def read_product(
 
 @router.post("/products", response_model=ProductResponse)
 async def create_product(
+    product: ProductCreate,
+    db: Session = Depends(get_db)
+):
+    """새로운 제품을 추가합니다 (JSON 지원)."""
+    logger.info(f"Creating product: {product.dict()}")
+    created_product = product_crud.create_product(db, product)
+    return created_product
+
+@router.post("/products/form", response_model=ProductResponse)
+async def create_product_form(
     name: str = Form(...),
     model_number: str = Form(...),
     category_id: int = Form(...),
     description: Optional[str] = Form(None),
     specifications: Optional[str] = Form(None),
     price: Optional[float] = Form(None),
-    is_featured: Optional[int] = Form(0),
+    is_featured: Optional[bool] = Form(False),
     display_order: Optional[int] = Form(0),
     images: List[UploadFile] = File([]),
     db: Session = Depends(get_db)
 ):
     """새로운 제품을 추가합니다 (FormData 지원)."""
     from schemas.product import ProductCreate
-    
-    # 디버깅: 받은 데이터 출력
-    print(f"=== CREATE PRODUCT ===")
-    print(f"name: {name}")
-    print(f"model_number: {model_number}")
-    print(f"category_id: {category_id}")
-    print(f"description: {description}")
-    print(f"specifications: {specifications}")
-    print(f"price: {price}")
-    print(f"is_featured: {is_featured}")
-    print(f"display_order: {display_order}")
-    print(f"images count: {len(images) if images else 0}")
     
     # ProductCreate 객체 생성
     product_data = {
@@ -265,7 +258,7 @@ async def create_product(
         'description': description.strip() if description and description.strip() else None,
         'specifications': specifications.strip() if specifications and specifications.strip() else None,
         'price': price if price is not None else None,
-        'is_featured': int(is_featured) if is_featured is not None else 0,
+        'is_featured': is_featured if is_featured is not None else False,
         'display_order': int(display_order) if display_order is not None else 0
     }
     
@@ -295,7 +288,29 @@ async def create_product(
                 
                 image_path = f"/images/{unique_filename}"
                 image_paths.append(image_path)
-                print(f"이미지 저장 완료: {unique_filename}")
+                logger.info(f"이미지 저장 완료: {unique_filename}")
+        
+        if image_paths:
+            # 첫 번째 이미지를 메인 이미지로 설정
+            product_data['file_name'] = os.path.basename(image_paths[0])
+            # 모든 이미지 경로를 JSON 배열로 저장
+            product_data['file_path'] = json.dumps(image_paths)
+        else:
+            # 기본값 설정
+            product_data['file_name'] = "default.jpg"
+            product_data['file_path'] = json.dumps(["/images/default.jpg"])
+    else:
+        # 기본값 설정
+        product_data['file_name'] = "default.jpg"
+        product_data['file_path'] = json.dumps(["/images/default.jpg"])
+    
+    try:
+        product = ProductCreate(**product_data)
+        created_product = product_crud.create_product(db, product)
+        return created_product
+    except Exception as e:
+        logger.error(f"Error creating product: {e}")
+        raise HTTPException(status_code=400, detail=f"제품 생성 실패: {str(e)}")
         
         if image_paths:
             # 첫 번째 이미지를 메인 이미지로 설정
@@ -329,13 +344,26 @@ async def create_product(
 @router.put("/products/{product_id}", response_model=ProductResponse)
 async def update_product(
     product_id: int,
+    product: ProductUpdate,
+    db: Session = Depends(get_db)
+):
+    """기존 제품 정보를 수정합니다 (JSON 지원)."""
+    logger.info(f"Updating product {product_id}: {product.dict(exclude_unset=True)}")
+    db_product = product_crud.update_product(db, product_id, product)
+    if db_product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return db_product
+
+@router.put("/products/{product_id}/form", response_model=ProductResponse)
+async def update_product_form(
+    product_id: int,
     name: Optional[str] = Form(None),
     model_number: Optional[str] = Form(None),
     category_id: Optional[int] = Form(None),
     description: Optional[str] = Form(None),
     specifications: Optional[str] = Form(None),
     price: Optional[float] = Form(None),
-    is_featured: Optional[int] = Form(None),
+    is_featured: Optional[bool] = Form(None),
     display_order: Optional[int] = Form(None),
     existing_images: Optional[str] = Form(None),  # 유지할 기존 이미지들 (JSON 배열)
     images: List[UploadFile] = File([]),
@@ -343,18 +371,6 @@ async def update_product(
 ):
     """기존 제품 정보를 수정합니다 (FormData 지원)."""
     from schemas.product import ProductUpdate
-    
-    # 디버깅: 받은 데이터 출력
-    print(f"=== UPDATE PRODUCT {product_id} ===")
-    print(f"name: {name}")
-    print(f"model_number: {model_number}")
-    print(f"category_id: {category_id}")
-    print(f"description: {description}")
-    print(f"specifications: {specifications}")
-    print(f"price: {price}")
-    print(f"is_featured: {is_featured}")
-    print(f"display_order: {display_order}")
-    print(f"images count: {len(images) if images else 0}")
     
     # ProductUpdate 객체 생성 (None이 아닌 값들만)
     product_data = {}
@@ -408,9 +424,9 @@ async def update_product(
                         if file_path.exists():
                             try:
                                 os.remove(file_path)
-                                print(f"삭제된 이미지 파일: {file_path}")
+                                logger.info(f"삭제된 이미지 파일: {file_path}")
                             except Exception as e:
-                                print(f"이미지 파일 삭제 실패: {file_path}, 오류: {e}")
+                                logger.error(f"이미지 파일 삭제 실패: {file_path}, 오류: {e}")
         except (json.JSONDecodeError, TypeError):
             pass
     
@@ -434,7 +450,7 @@ async def update_product(
                 
                 image_path = f"/images/{unique_filename}"
                 new_image_paths.append(image_path)
-                print(f"새 이미지 저장 완료: {unique_filename}")
+                logger.info(f"새 이미지 저장 완료: {unique_filename}")
     
     # 4. 최종 이미지 경로 리스트 구성 (기존 유지 + 새 이미지)
     final_image_paths = keep_existing_paths + new_image_paths
@@ -442,34 +458,23 @@ async def update_product(
     if final_image_paths:
         product_data['file_name'] = os.path.basename(final_image_paths[0])
         product_data['file_path'] = json.dumps(final_image_paths)
-        print(f"총 {len(final_image_paths)}개 이미지로 업데이트: {final_image_paths}")
     elif existing_product.file_path:  # 모든 이미지가 삭제된 경우
         product_data['file_name'] = "default.jpg"
         product_data['file_path'] = json.dumps(["/images/default.jpg"])
-    
-    print(f"product_data to update: {product_data}")
     
     if not product_data:
         raise HTTPException(status_code=400, detail="업데이트할 데이터가 없습니다")
     
     try:
         product = ProductUpdate(**product_data)
-        print(f"ProductUpdate object: {product}")
-        
         db_product = product_crud.update_product(db, product_id, product)
         if db_product is None:
             raise HTTPException(status_code=404, detail="Product not found")
-        
-        print(f"Updated product: {db_product}")
         return db_product
     except ValueError as ve:
-        print(f"Validation error: {ve}")
         raise HTTPException(status_code=422, detail=f"데이터 검증 오류: {str(ve)}")
     except Exception as e:
-        print(f"Error updating product: {e}")
-        print(f"Error type: {type(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error updating product: {e}")
         raise HTTPException(status_code=500, detail=f"제품 업데이트 실패: {str(e)}")
 
 @router.delete("/products/{product_id}")

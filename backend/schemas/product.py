@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -10,7 +10,7 @@ class ProductBase(BaseModel):
     specifications: Optional[str] = None
     price: Optional[float] = None
     stock_status: str = "재고있음"
-    is_featured: int = 0
+    is_featured: bool = False
     display_order: int = 0
 
 class ProductCreate(ProductBase):
@@ -25,7 +25,7 @@ class ProductUpdate(BaseModel):
     specifications: Optional[str] = None
     price: Optional[float] = None
     stock_status: Optional[str] = None
-    is_featured: Optional[int] = None
+    is_featured: Optional[bool] = None
     display_order: Optional[int] = None
     file_name: Optional[str] = None
     file_path: Optional[str] = None
@@ -38,6 +38,14 @@ class ProductResponse(ProductBase):
     category_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    
+    @field_validator('is_featured', mode='before')
+    @classmethod
+    def convert_is_featured_to_bool(cls, v):
+        """is_featured를 boolean으로 변환"""
+        if isinstance(v, bool):
+            return v
+        return bool(v)
     
     class Config:
         from_attributes = True 

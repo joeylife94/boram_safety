@@ -19,6 +19,10 @@ def get_category_by_code(db: Session, category_code: str) -> Optional[SafetyCate
     """카테고리 코드로 카테고리를 조회합니다."""
     return db.query(SafetyCategory).filter(SafetyCategory.code == category_code).first()
 
+def get_category_by_slug(db: Session, slug: str) -> Optional[SafetyCategory]:
+    """카테고리 slug로 카테고리를 조회합니다."""
+    return db.query(SafetyCategory).filter(SafetyCategory.slug == slug).first()
+
 def create_category(db: Session, category: CategoryCreate) -> SafetyCategory:
     """새로운 카테고리를 생성합니다."""
     db_category = SafetyCategory(**category.dict())

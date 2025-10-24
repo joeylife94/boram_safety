@@ -126,7 +126,12 @@ def get_product(db: Session, product_id: int) -> Optional[dict]:
 
 def create_product(db: Session, product: ProductCreate) -> SafetyProduct:
     """새로운 제품을 생성합니다."""
-    db_product = SafetyProduct(**product.dict())
+    product_dict = product.dict()
+    # is_featured를 boolean에서 integer로 변환
+    if 'is_featured' in product_dict:
+        product_dict['is_featured'] = 1 if product_dict['is_featured'] else 0
+    
+    db_product = SafetyProduct(**product_dict)
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
@@ -136,7 +141,12 @@ def update_product(db: Session, product_id: int, product: ProductUpdate) -> Opti
     """제품 정보를 수정합니다."""
     db_product = db.query(SafetyProduct).filter(SafetyProduct.id == product_id).first()
     if db_product:
-        for key, value in product.dict(exclude_unset=True).items():
+        update_dict = product.dict(exclude_unset=True)
+        # is_featured를 boolean에서 integer로 변환
+        if 'is_featured' in update_dict:
+            update_dict['is_featured'] = 1 if update_dict['is_featured'] else 0
+        
+        for key, value in update_dict.items():
             setattr(db_product, key, value)
         db.commit()
         db.refresh(db_product)

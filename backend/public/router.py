@@ -27,13 +27,24 @@ async def get_categories(
     """카테고리 목록 조회 (읽기 전용)"""
     return category_crud.get_categories(db, skip=skip, limit=limit)
 
-@router.get("/categories/{category_code}")
-async def get_category_by_code(
-    category_code: str,
+@router.get("/categories/{category_id}", response_model=Category)
+async def get_category_by_id(
+    category_id: int,
     db: Session = Depends(get_db)
 ):
-    """카테고리 코드로 조회 (읽기 전용)"""
-    category = category_crud.get_category_by_code(db, category_code)
+    """카테고리 ID로 조회 (읽기 전용)"""
+    category = category_crud.get_category(db, category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return category
+
+@router.get("/categories/slug/{slug}", response_model=Category)
+async def get_category_by_slug(
+    slug: str,
+    db: Session = Depends(get_db)
+):
+    """카테고리 slug로 조회 (읽기 전용)"""
+    category = category_crud.get_category_by_slug(db, slug)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     return category
