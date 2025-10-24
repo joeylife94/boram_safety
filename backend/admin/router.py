@@ -7,9 +7,14 @@ from database import get_db
 from crud import product as product_crud
 from crud import category as category_crud
 from crud import audit as audit_crud
+from crud import draft as draft_crud
 from schemas.product import ProductResponse, ProductCreate, ProductUpdate, ProductSearchParams, ProductSearchResponse
 from schemas.category import Category, CategoryCreate, CategoryUpdate
 from schemas.audit import AuditLogResponse, AuditLogFilter
+from schemas.draft import (
+    DraftProductCreate, DraftProductUpdate, DraftProductResponse, 
+    DraftListResponse, PublishDraftRequest
+)
 from models.safety import SafetyProduct, SafetyCategory
 from models.audit import AuditAction, AuditEntityType
 from core.logger import get_logger
@@ -1104,5 +1109,173 @@ async def get_recent_audit_activities(
     """최근 변경 활동을 조회합니다 (대시보드용)."""
     logs = audit_crud.get_recent_activities(db, limit)
     return logs
+
+
+# ============================================
+# Draft (임시 저장) API
+# ============================================
+
+@router.post("/drafts", response_model=DraftProductResponse, status_code=201)
+async def create_draft_product(
+    draft: DraftProductCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    제품 Draft를 생성합니다 (임시 저장).
+    
+    - 모든 필드가 선택사항입니다
+    - 자동 저장 기능을 위해 사용됩니다
+    """
+    logger.info(f"Creating draft: {draft.dict(exclude_unset=True)}")
+    db_draft = draft_crud.create_draft(db, draft)
+    return db_draft
+
+
+@router.get("/drafts", response_model=DraftListResponse)
+async def get_draft_products(
+    skip: int = 0,
+    limit: int = 20,
+    draft_status: Optional[str] = None,
+    created_by: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Draft 목록을 조회합니다.
+    
+    - **skip**: 건너뛸 항목 수
+    - **limit**: 한 페이지당 항목 수
+    - **draft_status**: 상태 필터 (draft, auto_saved, ready_to_publish)
+    - **created_by**: 작성자 필터
+    """
+    drafts, total = draft_crud.get_drafts(
+        db, 
+        skip=skip, 
+        limit=limit,
+        draft_status=draft_status,
+        created_by=created_by
+    )
+    
+    total_pages = math.ceil(total / limit) if limit > 0 else 0
+    
+    return {
+        "total": total,
+        "items": drafts,
+        "page": (skip // limit) + 1 if limit > 0 else 1,
+        "page_size": limit,
+        "total_pages": total_pages
+    }
+
+
+@router.get("/drafts/{draft_id}", response_model=DraftProductResponse)
+async def get_draft_product(
+    draft_id: int,
+    db: Session = Depends(get_db)
+):
+    """특정 Draft를 조회합니다."""
+    db_draft = draft_crud.get_draft(db, draft_id)
+    if not db_draft:
+        raise HTTPException(status_code=404, detail="Draft를 찾을 수 없습니다")
+    return db_draft
+
+
+@router.put("/drafts/{draft_id}", response_model=DraftProductResponse)
+async def update_draft_product(
+    draft_id: int,
+    draft: DraftProductUpdate,
+    auto_save: bool = False,
+    db: Session = Depends(get_db)
+):
+    """
+    Draft를 수정합니다.
+    
+    - **auto_save**: True인 경우 자동 저장 타임스탬프 업데이트
+    """
+    logger.info(f"Updating draft {draft_id}: {draft.dict(exclude_unset=True)}, auto_save={auto_save}")
+    
+    db_draft = draft_crud.update_draft(db, draft_id, draft, auto_save=auto_save)
+    if not db_draft:
+        raise HTTPException(status_code=404, detail="Draft를 찾을 수 없습니다")
+    
+    return db_draft
+
+
+@router.delete("/drafts/{draft_id}", status_code=204)
+async def delete_draft_product(
+    draft_id: int,
+    db: Session = Depends(get_db)
+):
+    """Draft를 삭제합니다."""
+    logger.info(f"Deleting draft {draft_id}")
+    
+    success = draft_crud.delete_draft(db, draft_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Draft를 찾을 수 없습니다")
+    
+    return None
+
+
+@router.post("/drafts/{draft_id}/publish", response_model=ProductResponse)
+async def publish_draft_product(
+    draft_id: int,
+    publish_request: PublishDraftRequest = PublishDraftRequest(),
+    db: Session = Depends(get_db)
+):
+    """
+    Draft를 실제 제품으로 발행합니다.
+    
+    - product_id가 있으면 기존 제품을 업데이트합니다
+    - product_id가 없으면 새 제품을 생성합니다
+    - 필수 필드 검증: name, model_number, category_id
+    """
+    logger.info(f"Publishing draft {draft_id}, delete_draft={publish_request.delete_draft}")
+    
+    try:
+        db_product = draft_crud.publish_draft(
+            db, 
+            draft_id, 
+            delete_after_publish=publish_request.delete_draft
+        )
+        
+        if not db_product:
+            raise HTTPException(status_code=404, detail="Draft를 찾을 수 없습니다")
+        
+        logger.info(f"Draft {draft_id} published as product {db_product.id}")
+        return db_product
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/drafts/from-product/{product_id}", response_model=DraftProductResponse, status_code=201)
+async def create_draft_from_product(
+    product_id: int,
+    created_by: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    기존 제품에서 Draft를 생성합니다 (수정용).
+    
+    - 제품 데이터를 Draft로 복사합니다
+    - 수정 후 발행하면 원본 제품이 업데이트됩니다
+    """
+    logger.info(f"Creating draft from product {product_id}")
+    
+    try:
+        db_draft = draft_crud.create_draft_from_product(db, product_id, created_by)
+        return db_draft
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/products/{product_id}/draft", response_model=DraftProductResponse)
+async def get_product_draft(
+    product_id: int,
+    db: Session = Depends(get_db)
+):
+    """특정 제품의 수정 중인 Draft를 조회합니다."""
+    db_draft = draft_crud.get_draft_by_product_id(db, product_id)
+    if not db_draft:
+        raise HTTPException(status_code=404, detail="해당 제품의 Draft가 없습니다")
+    return db_draft
 
  
