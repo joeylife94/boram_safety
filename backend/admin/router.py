@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import math
 
 from database import get_db
 from crud import product as product_crud
 from crud import category as category_crud
-from schemas.product import ProductResponse, ProductCreate, ProductUpdate
+from schemas.product import ProductResponse, ProductCreate, ProductUpdate, ProductSearchParams, ProductSearchResponse
 from schemas.category import Category, CategoryCreate, CategoryUpdate
 from models.safety import SafetyProduct, SafetyCategory
 from core.logger import get_logger
@@ -894,4 +895,59 @@ async def delete_content(content_id: str):
     """컨텐츠를 삭제하는 엔드포인트"""
     return {
         "message": f"컨텐츠 {content_id}가 성공적으로 삭제되었습니다"
-    } 
+    }
+
+
+# ============================================================
+# 고급 검색 & 필터링
+# ============================================================
+
+@router.post("/products/advanced-search", response_model=ProductSearchResponse)
+async def admin_advanced_search_products(
+    params: ProductSearchParams,
+    db: Session = Depends(get_db)
+):
+    """
+    관리자용 고급 검색으로 제품을 조회합니다.
+    
+    - **search**: 텍스트 검색 (제품명, 설명, 모델번호, 사양)
+    - **category_id**: 단일 카테고리 ID
+    - **category_codes**: 여러 카테고리 코드 (예: ["safety_helmet", "safety_gloves"])
+    - **min_price / max_price**: 가격 범위
+    - **stock_status**: 재고 상태 ("재고있음", "품절", "입고예정" 등)
+    - **is_featured**: 추천 제품 여부
+    - **created_after / created_before**: 등록 날짜 범위
+    - **sort_by**: 정렬 필드 (name, price, created_at, updated_at, display_order)
+    - **sort_order**: 정렬 순서 (asc, desc)
+    - **skip / limit**: 페이징
+    
+    예시:
+    ```json
+    {
+        "search": "헬멧",
+        "category_codes": ["safety_helmet"],
+        "min_price": 10000,
+        "max_price": 50000,
+        "stock_status": "재고있음",
+        "is_featured": true,
+        "sort_by": "price",
+        "sort_order": "asc",
+        "skip": 0,
+        "limit": 20
+    }
+    ```
+    """
+    products, total = product_crud.advanced_search_products(db, params)
+    
+    # 페이지 정보 계산
+    page = (params.skip // params.limit) + 1 if params.limit > 0 else 1
+    total_pages = math.ceil(total / params.limit) if params.limit > 0 else 0
+    
+    return ProductSearchResponse(
+        total=total,
+        items=products,
+        page=page,
+        page_size=params.limit,
+        total_pages=total_pages
+    )
+ 

@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session, joinedload
-from typing import List, Optional
+from sqlalchemy import and_, or_, func
+from typing import List, Optional, Tuple
 from models.safety import SafetyProduct, SafetyCategory
-from schemas.product import ProductCreate, ProductUpdate
+from schemas.product import ProductCreate, ProductUpdate, ProductSearchParams, SortField, SortOrder
+from datetime import datetime
 
 def get_product_count(db: Session) -> int:
     """총 제품 수를 반환합니다."""
@@ -210,4 +212,116 @@ def get_search_suggestions(db: Session, query: str, limit: int = 5) -> List[str]
         SafetyProduct.name.ilike(search_term)
     ).limit(limit).all()
     
-    return [result.name for result in results] 
+    return [result.name for result in results]
+
+
+def advanced_search_products(
+    db: Session, 
+    params: ProductSearchParams
+) -> Tuple[List[dict], int]:
+    """고급 검색으로 제품을 조회합니다."""
+    # 기본 쿼리 구성
+    query = db.query(
+        SafetyProduct.id,
+        SafetyProduct.name,
+        SafetyProduct.model_number,
+        SafetyProduct.category_id,
+        SafetyProduct.description,
+        SafetyProduct.specifications,
+        SafetyProduct.price,
+        SafetyProduct.stock_status,
+        SafetyProduct.is_featured,
+        SafetyProduct.display_order,
+        SafetyProduct.file_name,
+        SafetyProduct.file_path,
+        SafetyProduct.created_at,
+        SafetyProduct.updated_at,
+        SafetyCategory.code.label('category_code'),
+        SafetyCategory.name.label('category_name')
+    ).join(SafetyCategory, SafetyProduct.category_id == SafetyCategory.id)
+    
+    # 필터 조건 적용
+    filters = []
+    
+    # 텍스트 검색
+    if params.search:
+        search_term = f"%{params.search}%"
+        filters.append(
+            or_(
+                SafetyProduct.name.ilike(search_term),
+                SafetyProduct.description.ilike(search_term),
+                SafetyProduct.model_number.ilike(search_term),
+                SafetyProduct.specifications.ilike(search_term)
+            )
+        )
+    
+    # 카테고리 ID
+    if params.category_id:
+        filters.append(SafetyProduct.category_id == params.category_id)
+    
+    # 여러 카테고리 코드
+    if params.category_codes:
+        filters.append(SafetyCategory.code.in_(params.category_codes))
+    
+    # 가격 범위
+    if params.min_price is not None:
+        filters.append(SafetyProduct.price >= params.min_price)
+    if params.max_price is not None:
+        filters.append(SafetyProduct.price <= params.max_price)
+    
+    # 재고 상태
+    if params.stock_status:
+        filters.append(SafetyProduct.stock_status == params.stock_status)
+    
+    # 추천 제품
+    if params.is_featured is not None:
+        filters.append(SafetyProduct.is_featured == (1 if params.is_featured else 0))
+    
+    # 날짜 범위
+    if params.created_after:
+        filters.append(SafetyProduct.created_at >= params.created_after)
+    if params.created_before:
+        filters.append(SafetyProduct.created_at <= params.created_before)
+    
+    # 필터 적용
+    if filters:
+        query = query.filter(and_(*filters))
+    
+    # 총 개수 계산 (정렬/페이징 전)
+    total = query.count()
+    
+    # 정렬 적용
+    sort_column = getattr(SafetyProduct, params.sort_by.value)
+    if params.sort_order == SortOrder.desc:
+        query = query.order_by(sort_column.desc())
+    else:
+        query = query.order_by(sort_column.asc())
+    
+    # 페이징 적용
+    results = query.offset(params.skip).limit(params.limit).all()
+    
+    # 결과를 dict 형태로 변환
+    products = []
+    for row in results:
+        product = {
+            'id': row.id,
+            'name': row.name,
+            'model_number': row.model_number,
+            'category_id': row.category_id,
+            'description': row.description,
+            'specifications': row.specifications,
+            'price': row.price,
+            'stock_status': row.stock_status,
+            'is_featured': row.is_featured,
+            'display_order': row.display_order,
+            'file_name': row.file_name,
+            'file_path': row.file_path,
+            'created_at': row.created_at,
+            'updated_at': row.updated_at,
+            'category_code': row.category_code,
+            'category_name': row.category_name
+        }
+        products.append(product)
+    
+    return products, total
+ 
