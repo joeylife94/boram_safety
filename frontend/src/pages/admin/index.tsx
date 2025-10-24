@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { getDashboard, DashboardStats as APIDashboardStats } from '@/api/admin';
+import { 
+  getDashboard, 
+  DashboardStats as APIDashboardStats,
+  getRecentAuditActivities,
+  AuditLog
+} from '@/api/admin';
 
 interface DashboardStats {
   totalProducts: number;
@@ -18,6 +23,7 @@ const AdminDashboard = () => {
     featuredProducts: 0,
     totalImages: 0
   });
+  const [recentActivities, setRecentActivities] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +35,8 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // 대시보드 통계 가져오기
       const data = await getDashboard();
       setStats({
         totalProducts: data.stats.total_products,
@@ -36,6 +44,15 @@ const AdminDashboard = () => {
         featuredProducts: data.stats.featured_products,
         totalImages: data.stats.total_images
       });
+      
+      // 최근 활동 가져오기
+      try {
+        const activities = await getRecentAuditActivities(10);
+        setRecentActivities(activities);
+      } catch (auditError) {
+        console.error('Audit log fetch error:', auditError);
+        // Audit log는 실패해도 대시보드는 표시
+      }
     } catch (error) {
       console.error('Dashboard data fetch error:', error);
       setError('대시보드 데이터를 불러오는데 실패했습니다.');
@@ -248,27 +265,93 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Activity (placeholder) */}
+        {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-6 border-b">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-gray-900">최근 활동</h3>
               <button
                 onClick={fetchDashboardData}
-                className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                className="text-sm text-blue-600 hover:text-blue-800 transition-colors flex items-center space-x-1"
               >
-                새로고침
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>새로고침</span>
               </button>
             </div>
           </div>
           <div className="p-6">
-            <div className="text-center py-8">
-              <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <p className="text-gray-500">최근 활동이 없습니다</p>
-              <p className="text-sm text-gray-400 mt-1">제품이나 카테고리를 관리하면 여기에 표시됩니다</p>
-            </div>
+            {recentActivities.length === 0 ? (
+              <div className="text-center py-8">
+                <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <p className="text-gray-500">최근 활동이 없습니다</p>
+                <p className="text-sm text-gray-400 mt-1">제품이나 카테고리를 관리하면 여기에 표시됩니다</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div className="flex-shrink-0">
+                      {activity.action === 'CREATE' && (
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                        </div>
+                      )}
+                      {activity.action === 'UPDATE' && (
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </div>
+                      )}
+                      {activity.action === 'DELETE' && (
+                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </div>
+                      )}
+                      {(activity.action === 'BULK_UPDATE' || activity.action === 'BULK_DELETE') && (
+                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">
+                        {activity.changes_summary}
+                      </p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                          {activity.entity_type === 'PRODUCT' ? '제품' : '카테고리'}
+                        </span>
+                        {activity.entity_id && (
+                          <span className="text-xs text-gray-500">
+                            ID: {activity.entity_id}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-400">
+                          {new Date(activity.created_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </main>

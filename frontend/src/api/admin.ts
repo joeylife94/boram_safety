@@ -279,4 +279,167 @@ export const uploadImage = async (file: File): Promise<ImageUploadResponse> => {
 export const adminHealthCheck = async (): Promise<{ status: string; role: string }> => {
   const response = await adminApi.get('/health');
   return response.data;
+};
+
+// ================== Audit Log (변경 이력) ==================
+export interface AuditLog {
+  id: number;
+  entity_type: 'PRODUCT' | 'CATEGORY';
+  entity_id?: number;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'BULK_UPDATE' | 'BULK_DELETE';
+  old_values?: Record<string, any>;
+  new_values?: Record<string, any>;
+  changes_summary: string;
+  user_id?: string;
+  user_name?: string;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+}
+
+export interface AuditLogParams {
+  skip?: number;
+  limit?: number;
+  entity_type?: 'PRODUCT' | 'CATEGORY';
+  entity_id?: number;
+  action?: string;
+  user_id?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export const getAuditLogs = async (params: AuditLogParams = {}): Promise<AuditLog[]> => {
+  const response = await adminApi.get('/audit-logs', { params });
+  return response.data;
+};
+
+export const getEntityAuditHistory = async (
+  entityType: 'PRODUCT' | 'CATEGORY',
+  entityId: number,
+  limit: number = 50
+): Promise<AuditLog[]> => {
+  const response = await adminApi.get(`/audit-logs/entity/${entityType}/${entityId}`, {
+    params: { limit }
+  });
+  return response.data;
+};
+
+export const getRecentAuditActivities = async (limit: number = 20): Promise<AuditLog[]> => {
+  const response = await adminApi.get('/audit-logs/recent', {
+    params: { limit }
+  });
+  return response.data;
+};
+
+// ================== Draft (임시 저장) ==================
+export interface DraftProduct {
+  id: number;
+  name?: string;
+  model_number?: string;
+  category_id?: number;
+  description?: string;
+  specifications?: string;
+  price?: number;
+  stock_status?: string;
+  is_featured?: boolean;
+  display_order?: number;
+  file_name?: string;
+  file_path?: string;
+  extra_data?: Record<string, any>;
+  draft_status: 'draft' | 'auto_saved' | 'ready_to_publish';
+  product_id?: number;
+  created_at: string;
+  updated_at?: string;
+  last_auto_saved_at?: string;
+  created_by?: string;
+}
+
+export interface DraftProductCreate {
+  name?: string;
+  model_number?: string;
+  category_id?: number;
+  description?: string;
+  specifications?: string;
+  price?: number;
+  stock_status?: string;
+  is_featured?: boolean;
+  display_order?: number;
+  file_name?: string;
+  file_path?: string;
+  extra_data?: Record<string, any>;
+  draft_status?: 'draft' | 'auto_saved' | 'ready_to_publish';
+  product_id?: number;
+  created_by?: string;
+}
+
+export interface DraftProductUpdate extends DraftProductCreate {}
+
+export interface DraftListResponse {
+  total: number;
+  items: DraftProduct[];
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface DraftListParams {
+  skip?: number;
+  limit?: number;
+  draft_status?: 'draft' | 'auto_saved' | 'ready_to_publish';
+  created_by?: string;
+}
+
+export const getDrafts = async (params: DraftListParams = {}): Promise<DraftListResponse> => {
+  const response = await adminApi.get('/drafts', { params });
+  return response.data;
+};
+
+export const getDraft = async (id: number): Promise<DraftProduct> => {
+  const response = await adminApi.get(`/drafts/${id}`);
+  return response.data;
+};
+
+export const createDraft = async (data: DraftProductCreate): Promise<DraftProduct> => {
+  const response = await adminApi.post('/drafts', data);
+  return response.data;
+};
+
+export const updateDraft = async (
+  id: number,
+  data: DraftProductUpdate,
+  autoSave: boolean = false
+): Promise<DraftProduct> => {
+  const response = await adminApi.put(`/drafts/${id}`, data, {
+    params: { auto_save: autoSave }
+  });
+  return response.data;
+};
+
+export const deleteDraft = async (id: number): Promise<void> => {
+  await adminApi.delete(`/drafts/${id}`);
+};
+
+export const publishDraft = async (
+  id: number,
+  deleteDraft: boolean = true
+): Promise<Product> => {
+  const response = await adminApi.post(`/drafts/${id}/publish`, {
+    delete_draft: deleteDraft
+  });
+  return response.data;
+};
+
+export const createDraftFromProduct = async (
+  productId: number,
+  createdBy?: string
+): Promise<DraftProduct> => {
+  const response = await adminApi.post(`/drafts/from-product/${productId}`, null, {
+    params: { created_by: createdBy }
+  });
+  return response.data;
+};
+
+export const getProductDraft = async (productId: number): Promise<DraftProduct> => {
+  const response = await adminApi.get(`/products/${productId}/draft`);
+  return response.data;
 }; 
