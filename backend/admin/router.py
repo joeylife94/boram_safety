@@ -24,20 +24,81 @@ def admin_health_check():
 
 @router.get("/dashboard")
 async def admin_dashboard(db: Session = Depends(get_db)):
-    """관리자 대시보드 정보를 반환합니다."""
+    """관리자 대시보드 통계 정보를 반환합니다."""
+    from sqlalchemy import func, and_
+    from datetime import datetime, timedelta
+    
+    # 기본 통계
     total_products = product_crud.get_product_count(db)
     total_categories = category_crud.get_category_count(db)
     featured_products = product_crud.get_featured_product_count(db)
     
+    # 카테고리별 제품 수
+    category_stats = db.query(
+        SafetyCategory.name,
+        SafetyCategory.code,
+        func.count(SafetyProduct.id).label('product_count')
+    ).outerjoin(SafetyProduct, SafetyCategory.id == SafetyProduct.category_id)\
+     .group_by(SafetyCategory.id, SafetyCategory.name, SafetyCategory.code)\
+     .order_by(func.count(SafetyProduct.id).desc())\
+     .all()
+    
+    # 최근 7일간 등록된 제품
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    recent_products = db.query(SafetyProduct)\
+        .filter(SafetyProduct.created_at >= seven_days_ago)\
+        .order_by(SafetyProduct.created_at.desc())\
+        .limit(10)\
+        .all()
+    
+    # 최근 수정된 제품
+    recently_updated = db.query(SafetyProduct)\
+        .filter(SafetyProduct.updated_at.isnot(None))\
+        .order_by(SafetyProduct.updated_at.desc())\
+        .limit(10)\
+        .all()
+    
+    # 이미지 없는 제품 (file_path가 default인 경우)
+    products_without_images = db.query(SafetyProduct)\
+        .filter(SafetyProduct.file_path.like('%default%'))\
+        .count()
+    
+    # 재고 부족 제품 (stock_status가 'out_of_stock'인 경우)
+    out_of_stock_count = db.query(SafetyProduct)\
+        .filter(SafetyProduct.stock_status == 'out_of_stock')\
+        .count()
+    
     return {
-        "message": "관리자 대시보드에 오신 것을 환영합니다",
-        "status": "authenticated",
-        "stats": {
+        "summary": {
             "total_products": total_products,
             "total_categories": total_categories,
             "featured_products": featured_products,
-            "total_images": total_products
-        }
+            "out_of_stock": out_of_stock_count,
+            "missing_images": products_without_images
+        },
+        "category_stats": [
+            {
+                "name": stat.name,
+                "code": stat.code,
+                "count": stat.product_count
+            } for stat in category_stats
+        ],
+        "recent_products": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "model_number": p.model_number,
+                "created_at": p.created_at.isoformat() if p.created_at else None
+            } for p in recent_products
+        ],
+        "recently_updated": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "model_number": p.model_number,
+                "updated_at": p.updated_at.isoformat() if p.updated_at else None
+            } for p in recently_updated
+        ]
     }
 
 @router.post("/upload-image")
@@ -487,6 +548,330 @@ async def delete_product(
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     return {"message": f"제품 {product_id}가 성공적으로 삭제되었습니다"}
+
+@router.post("/products/{product_id}/duplicate", response_model=ProductResponse)
+async def duplicate_product(
+    product_id: int,
+    db: Session = Depends(get_db)
+):
+    """기존 제품을 복사하여 새 제품을 생성합니다."""
+    import json
+    
+    # 원본 제품 조회
+    original = db.query(SafetyProduct).filter(SafetyProduct.id == product_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # 새 제품 데이터 생성 (ID 제외)
+    new_product_data = {
+        "name": f"{original.name} (복사본)",
+        "model_number": f"{original.model_number}-COPY",
+        "category_id": original.category_id,
+        "description": original.description,
+        "specifications": original.specifications,
+        "price": original.price,
+        "stock_status": original.stock_status,
+        "is_featured": 0,  # 복사본은 기본적으로 추천 해제
+        "display_order": original.display_order,
+        "file_name": original.file_name,
+        "file_path": original.file_path
+    }
+    
+    # 새 제품 생성
+    new_product = SafetyProduct(**new_product_data)
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)
+    
+    logger.info(f"제품 복사 완료: {product_id} → {new_product.id}")
+    return product_crud.get_product(db, new_product.id)
+
+@router.put("/products/bulk")
+async def bulk_update_products(
+    product_ids: List[int],
+    updates: dict,
+    db: Session = Depends(get_db)
+):
+    """여러 제품을 일괄 수정합니다."""
+    from schemas.product import ProductUpdate
+    
+    if not product_ids:
+        raise HTTPException(status_code=400, detail="제품 ID 목록이 비어있습니다")
+    
+    # 허용된 필드만 업데이트
+    allowed_fields = ['category_id', 'price', 'is_featured', 'stock_status', 'display_order']
+    filtered_updates = {k: v for k, v in updates.items() if k in allowed_fields}
+    
+    if not filtered_updates:
+        raise HTTPException(status_code=400, detail="업데이트할 필드가 없습니다")
+    
+    # is_featured 타입 변환
+    if 'is_featured' in filtered_updates:
+        filtered_updates['is_featured'] = 1 if filtered_updates['is_featured'] else 0
+    
+    # 일괄 업데이트 실행
+    updated_count = 0
+    for product_id in product_ids:
+        product = db.query(SafetyProduct).filter(SafetyProduct.id == product_id).first()
+        if product:
+            for key, value in filtered_updates.items():
+                setattr(product, key, value)
+            updated_count += 1
+    
+    db.commit()
+    
+    logger.info(f"일괄 수정 완료: {updated_count}개 제품")
+    return {
+        "message": f"{updated_count}개 제품이 성공적으로 수정되었습니다",
+        "updated_count": updated_count,
+        "total_requested": len(product_ids)
+    }
+
+@router.delete("/products/bulk")
+async def bulk_delete_products(
+    product_ids: List[int],
+    db: Session = Depends(get_db)
+):
+    """여러 제품을 일괄 삭제합니다."""
+    if not product_ids:
+        raise HTTPException(status_code=400, detail="제품 ID 목록이 비어있습니다")
+    
+    deleted_count = 0
+    for product_id in product_ids:
+        product = product_crud.delete_product(db, product_id)
+        if product:
+            deleted_count += 1
+    
+    logger.info(f"일괄 삭제 완료: {deleted_count}개 제품")
+    return {
+        "message": f"{deleted_count}개 제품이 성공적으로 삭제되었습니다",
+        "deleted_count": deleted_count,
+        "total_requested": len(product_ids)
+    }
+
+@router.get("/products/export/template")
+async def download_product_template():
+    """제품 등록용 엑셀 템플릿을 다운로드합니다."""
+    from fastapi.responses import StreamingResponse
+    import openpyxl
+    from io import BytesIO
+    
+    # 엑셀 워크북 생성
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "제품 목록"
+    
+    # 헤더 작성
+    headers = [
+        "제품명*", "모델번호*", "카테고리코드*", "설명", "규격",
+        "가격", "재고상태", "추천제품", "표시순서"
+    ]
+    ws.append(headers)
+    
+    # 예시 데이터
+    example_row = [
+        "안전모 예시", "SH-001", "safety_helmet", "고급 안전모",
+        "ABS 재질, 조절식", 25000, "in_stock", "FALSE", 1
+    ]
+    ws.append(example_row)
+    
+    # 스타일 적용
+    for cell in ws[1]:
+        cell.font = openpyxl.styles.Font(bold=True)
+        cell.fill = openpyxl.styles.PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+    
+    # BytesIO로 저장
+    excel_file = BytesIO()
+    wb.save(excel_file)
+    excel_file.seek(0)
+    
+    return StreamingResponse(
+        excel_file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=product_template.xlsx"}
+    )
+
+@router.post("/products/import")
+async def import_products_from_excel(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """엑셀 파일로 제품을 일괄 등록합니다."""
+    import openpyxl
+    from io import BytesIO
+    import json
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="엑셀 파일만 업로드 가능합니다 (.xlsx, .xls)")
+    
+    # 파일 읽기
+    contents = await file.read()
+    wb = openpyxl.load_workbook(BytesIO(contents))
+    ws = wb.active
+    
+    # 헤더 검증 (첫 번째 행)
+    headers = [cell.value for cell in ws[1]]
+    required_headers = ["제품명", "모델번호", "카테고리코드"]
+    
+    # 결과 저장
+    results = {
+        "success": [],
+        "errors": [],
+        "total": 0
+    }
+    
+    # 데이터 행 처리 (2행부터)
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        results["total"] += 1
+        
+        try:
+            # 빈 행 건너뛰기
+            if not any(row):
+                continue
+            
+            # 데이터 파싱
+            name = row[0]
+            model_number = row[1]
+            category_code = row[2]
+            description = row[3] if len(row) > 3 else None
+            specifications = row[4] if len(row) > 4 else None
+            price = float(row[5]) if len(row) > 5 and row[5] else None
+            stock_status = row[6] if len(row) > 6 else "in_stock"
+            is_featured = str(row[7]).upper() == "TRUE" if len(row) > 7 else False
+            display_order = int(row[8]) if len(row) > 8 and row[8] else 0
+            
+            # 필수 필드 검증
+            if not name or not model_number or not category_code:
+                results["errors"].append({
+                    "row": row_idx,
+                    "error": "필수 필드 누락 (제품명, 모델번호, 카테고리코드)"
+                })
+                continue
+            
+            # 카테고리 존재 확인
+            category = category_crud.get_category_by_code(db, category_code)
+            if not category:
+                results["errors"].append({
+                    "row": row_idx,
+                    "error": f"존재하지 않는 카테고리 코드: {category_code}"
+                })
+                continue
+            
+            # 제품 생성
+            product_data = {
+                "name": name,
+                "model_number": model_number,
+                "category_id": category.id,
+                "description": description,
+                "specifications": specifications,
+                "price": price,
+                "stock_status": stock_status,
+                "is_featured": 1 if is_featured else 0,
+                "display_order": display_order,
+                "file_name": "default.jpg",
+                "file_path": json.dumps(["/images/default.jpg"])
+            }
+            
+            new_product = SafetyProduct(**product_data)
+            db.add(new_product)
+            db.commit()
+            db.refresh(new_product)
+            
+            results["success"].append({
+                "row": row_idx,
+                "id": new_product.id,
+                "name": name
+            })
+            
+        except Exception as e:
+            results["errors"].append({
+                "row": row_idx,
+                "error": str(e)
+            })
+            db.rollback()
+    
+    logger.info(f"엑셀 업로드 완료: 성공 {len(results['success'])}개, 실패 {len(results['errors'])}개")
+    
+    return {
+        "message": f"총 {results['total']}개 중 {len(results['success'])}개 성공, {len(results['errors'])}개 실패",
+        "success_count": len(results["success"]),
+        "error_count": len(results["errors"]),
+        "details": results
+    }
+
+@router.post("/images/bulk")
+async def bulk_upload_images(
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db)
+):
+    """여러 이미지를 동시에 업로드합니다."""
+    import os
+    import uuid
+    from pathlib import Path
+    
+    if not files:
+        raise HTTPException(status_code=400, detail="업로드할 파일이 없습니다")
+    
+    upload_dir = Path("../frontend/public/images")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    results = {
+        "success": [],
+        "errors": []
+    }
+    
+    for file in files:
+        try:
+            # 파일 형식 검증
+            allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+            file_extension = os.path.splitext(file.filename)[1].lower()
+            
+            if file_extension not in allowed_extensions:
+                results["errors"].append({
+                    "filename": file.filename,
+                    "error": "지원하지 않는 파일 형식"
+                })
+                continue
+            
+            # 파일 크기 검증 (10MB 제한)
+            contents = await file.read()
+            if len(contents) > 10 * 1024 * 1024:  # 10MB
+                results["errors"].append({
+                    "filename": file.filename,
+                    "error": "파일 크기가 너무 큽니다 (최대 10MB)"
+                })
+                continue
+            
+            # 고유한 파일명 생성
+            unique_filename = f"{uuid.uuid4()}{file_extension}"
+            file_path = upload_dir / unique_filename
+            
+            # 파일 저장
+            with open(file_path, "wb") as f:
+                f.write(contents)
+            
+            results["success"].append({
+                "original_filename": file.filename,
+                "saved_filename": unique_filename,
+                "url": f"/images/{unique_filename}",
+                "size": len(contents)
+            })
+            
+            logger.info(f"이미지 업로드 성공: {file.filename} → {unique_filename}")
+            
+        except Exception as e:
+            results["errors"].append({
+                "filename": file.filename,
+                "error": str(e)
+            })
+            logger.error(f"이미지 업로드 실패: {file.filename}, 오류: {e}")
+    
+    return {
+        "message": f"총 {len(files)}개 중 {len(results['success'])}개 성공, {len(results['errors'])}개 실패",
+        "success_count": len(results["success"]),
+        "error_count": len(results["errors"]),
+        "results": results
+    }
 
 @router.post("/content")
 async def create_content(content: dict):
