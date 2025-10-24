@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import math
@@ -6,10 +6,18 @@ import math
 from database import get_db
 from crud import product as product_crud
 from crud import category as category_crud
+from crud import audit as audit_crud
 from schemas.product import ProductResponse, ProductCreate, ProductUpdate, ProductSearchParams, ProductSearchResponse
 from schemas.category import Category, CategoryCreate, CategoryUpdate
+from schemas.audit import AuditLogResponse, AuditLogFilter
 from models.safety import SafetyProduct, SafetyCategory
+from models.audit import AuditAction, AuditEntityType
 from core.logger import get_logger
+from utils.audit_logger import (
+    log_product_create, log_product_update, log_product_delete,
+    log_category_create, log_category_update, log_category_delete,
+    log_bulk_update, log_bulk_delete, model_to_dict
+)
 
 logger = get_logger(__name__)
 
@@ -166,11 +174,16 @@ async def read_category(
 @router.post("/categories", response_model=Category)
 async def create_category(
     category: CategoryCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """새로운 카테고리를 생성합니다 (JSON 지원)."""
     logger.info(f"Creating category: {category.dict()}")
     created_category = category_crud.create_category(db, category)
+    
+    # Audit Log 기록
+    log_category_create(db, created_category.id, category.dict(), request)
+    
     return created_category
 
 @router.post("/categories/form", response_model=Category)
@@ -204,13 +217,26 @@ async def create_category_form(
 async def update_category(
     category_id: int,
     category: CategoryUpdate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """카테고리 정보를 수정합니다 (JSON 지원)."""
     logger.info(f"Updating category {category_id}: {category.dict(exclude_unset=True)}")
-    db_category = category_crud.update_category(db, category_id, category)
-    if db_category is None:
+    
+    # 기존 데이터 조회 (Audit Log용)
+    old_category = db.query(SafetyCategory).filter(SafetyCategory.id == category_id).first()
+    if old_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
+    
+    old_data = model_to_dict(old_category)
+    
+    # 업데이트 수행
+    db_category = category_crud.update_category(db, category_id, category)
+    
+    # Audit Log 기록
+    new_data = model_to_dict(db_category)
+    log_category_update(db, category_id, old_data, new_data, request)
+    
     return db_category
 
 @router.put("/categories/{category_id}/form", response_model=Category)
@@ -253,12 +279,23 @@ async def update_category_form(
 @router.delete("/categories/{category_id}")
 async def delete_category(
     category_id: int,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """카테고리를 삭제합니다."""
-    db_category = category_crud.delete_category(db, category_id)
-    if db_category is None:
+    # 기존 데이터 조회 (Audit Log용)
+    old_category = db.query(SafetyCategory).filter(SafetyCategory.id == category_id).first()
+    if old_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
+    
+    old_data = model_to_dict(old_category)
+    
+    # 삭제 수행
+    db_category = category_crud.delete_category(db, category_id)
+    
+    # Audit Log 기록
+    log_category_delete(db, category_id, old_data, request)
+    
     return {"message": f"카테고리 {category_id}가 성공적으로 삭제되었습니다"}
 
 # ============= 제품 관리 =============
@@ -289,11 +326,16 @@ async def read_product(
 @router.post("/products", response_model=ProductResponse)
 async def create_product(
     product: ProductCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """새로운 제품을 추가합니다 (JSON 지원)."""
     logger.info(f"Creating product: {product.dict()}")
     created_product = product_crud.create_product(db, product)
+    
+    # Audit Log 기록
+    log_product_create(db, created_product.id, product.dict(), request)
+    
     return created_product
 
 @router.post("/products/form", response_model=ProductResponse)
@@ -407,13 +449,26 @@ async def create_product_form(
 async def update_product(
     product_id: int,
     product: ProductUpdate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """기존 제품 정보를 수정합니다 (JSON 지원)."""
     logger.info(f"Updating product {product_id}: {product.dict(exclude_unset=True)}")
-    db_product = product_crud.update_product(db, product_id, product)
-    if db_product is None:
+    
+    # 기존 데이터 조회 (Audit Log용)
+    old_product = db.query(SafetyProduct).filter(SafetyProduct.id == product_id).first()
+    if old_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
+    
+    old_data = model_to_dict(old_product)
+    
+    # 업데이트 수행
+    db_product = product_crud.update_product(db, product_id, product)
+    
+    # Audit Log 기록
+    new_data = model_to_dict(db_product)
+    log_product_update(db, product_id, old_data, new_data, request)
+    
     return db_product
 
 @router.put("/products/{product_id}/form", response_model=ProductResponse)
@@ -542,12 +597,23 @@ async def update_product_form(
 @router.delete("/products/{product_id}")
 async def delete_product(
     product_id: int,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """제품을 삭제합니다."""
-    db_product = product_crud.delete_product(db, product_id)
-    if db_product is None:
+    # 기존 데이터 조회 (Audit Log용)
+    old_product = db.query(SafetyProduct).filter(SafetyProduct.id == product_id).first()
+    if old_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
+    
+    old_data = model_to_dict(old_product)
+    
+    # 삭제 수행
+    db_product = product_crud.delete_product(db, product_id)
+    
+    # Audit Log 기록
+    log_product_delete(db, product_id, old_data, request)
+    
     return {"message": f"제품 {product_id}가 성공적으로 삭제되었습니다"}
 
 @router.post("/products/{product_id}/duplicate", response_model=ProductResponse)
@@ -950,4 +1016,93 @@ async def admin_advanced_search_products(
         page_size=params.limit,
         total_pages=total_pages
     )
+
+
+# ============================================================
+# 변경 이력 추적 (Audit Log)
+# ============================================================
+
+@router.get("/audit-logs", response_model=List[AuditLogResponse])
+async def get_audit_logs(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[int] = None,
+    action: Optional[str] = None,
+    user_id: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """
+    변경 이력 로그를 조회합니다.
+    
+    - **entity_type**: 엔티티 타입 (PRODUCT, CATEGORY)
+    - **entity_id**: 엔티티 ID
+    - **action**: 작업 타입 (CREATE, UPDATE, DELETE, BULK_UPDATE, BULK_DELETE)
+    - **user_id**: 사용자 ID (향후 인증 시스템 추가 시 사용)
+    - **date_from**: 시작 날짜 (YYYY-MM-DD 또는 ISO 8601 형식)
+    - **date_to**: 종료 날짜
+    - **skip / limit**: 페이징
+    """
+    from datetime import datetime
+    
+    # 날짜 문자열을 datetime으로 변환
+    date_from_dt = None
+    date_to_dt = None
+    
+    if date_from:
+        try:
+            date_from_dt = datetime.fromisoformat(date_from)
+        except:
+            pass
+    
+    if date_to:
+        try:
+            date_to_dt = datetime.fromisoformat(date_to)
+        except:
+            pass
+    
+    # 필터 생성
+    filters = AuditLogFilter(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action,
+        user_id=user_id,
+        date_from=date_from_dt,
+        date_to=date_to_dt,
+        skip=skip,
+        limit=limit
+    )
+    
+    logs, total = audit_crud.get_audit_logs(db, filters)
+    return logs
+
+
+@router.get("/audit-logs/entity/{entity_type}/{entity_id}", response_model=List[AuditLogResponse])
+async def get_entity_audit_history(
+    entity_type: str,
+    entity_id: int,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """
+    특정 엔티티(제품/카테고리)의 변경 이력을 조회합니다.
+    
+    예: GET /api/admin/audit-logs/entity/PRODUCT/123
+    """
+    entity_type_enum = AuditEntityType(entity_type)
+    logs = audit_crud.get_entity_history(db, entity_type_enum, entity_id, limit)
+    return logs
+
+
+@router.get("/audit-logs/recent", response_model=List[AuditLogResponse])
+async def get_recent_audit_activities(
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """최근 변경 활동을 조회합니다 (대시보드용)."""
+    logs = audit_crud.get_recent_activities(db, limit)
+    return logs
+
  
