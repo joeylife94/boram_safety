@@ -1,4 +1,5 @@
 import { Product, SafetyProduct, SafetyCategory } from '@/types/product';
+import { logger } from '@/lib/logger';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -12,11 +13,30 @@ export async function getCategories(): Promise<SafetyCategory[]> {
 }
 
 export async function getCategoryByCode(code: string): Promise<SafetyCategory> {
-  const response = await fetch(`${API_BASE_URL}/api/categories/${code}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch category');
+  // 먼저 slug 기반 엔드포인트로 시도
+  try {
+    const slugResp = await fetch(`${API_BASE_URL}/api/categories/slug/${encodeURIComponent(code)}`);
+    if (slugResp.ok) {
+      return slugResp.json();
+    }
+
+    // 422 등으로 실패하면 아래에서 전체 카테고리를 가져와서 클라이언트 측에서 매칭
+    logger.warn(`getCategoryByCode: slug lookup failed (${slugResp.status}). Falling back to list lookup.`);
+  } catch (err) {
+    logger.warn('getCategoryByCode: slug lookup threw error, falling back to list lookup.', err);
   }
-  return response.json();
+
+  // 폴백: 전체 카테고리 목록을 가져와 code 혹은 slug로 매칭
+  const listResp = await fetch(`${API_BASE_URL}/api/categories`);
+  if (!listResp.ok) {
+    throw new Error('Failed to fetch category list for fallback');
+  }
+  const categories: SafetyCategory[] = await listResp.json();
+  const found = categories.find(c => c.code === code || c.slug === code || String(c.id) === code);
+  if (!found) {
+    throw new Error('Category not found');
+  }
+  return found;
 }
 
 // 제품 관련 API

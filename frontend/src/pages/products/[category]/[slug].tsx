@@ -1,72 +1,32 @@
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { GetServerSideProps } from 'next';
+import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { getProductById, getCategoryByCode } from '@/api/product';
 import { SafetyProduct, SafetyCategory } from '@/types/product';
 import { getProductImageUrl, getImageUrl } from '@/utils/image';
 import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
-export default function ProductDetailPage() {
+interface PageProps {
+  product: SafetyProduct | null;
+  categoryInfo: SafetyCategory | null;
+}
+
+export default function ProductDetailPage({ product: initialProduct, categoryInfo: initialCategory }: PageProps) {
   const router = useRouter();
-  const { category, slug } = router.query;
-  const [product, setProduct] = useState<SafetyProduct | null>(null);
-  const [categoryInfo, setCategoryInfo] = useState<SafetyCategory | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [product] = useState<SafetyProduct | null>(initialProduct ?? null);
+  const [categoryInfo] = useState<SafetyCategory | null>(initialCategory ?? null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // 안전한 placeholder 이미지
   const defaultPlaceholder = 'data:image/svg+xml;charset=utf-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"%3E%3Crect width="100%25" height="100%25" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23666666" font-family="Arial, sans-serif" font-size="18"%3E이미지 없음%3C/text%3E%3C/svg%3E';
 
-  useEffect(() => {
-    if (slug && category && typeof category === 'string' && typeof slug === 'string') {
-      const fetchData = async () => {
-        try {
-          setLoading(true);
-          const productId = parseInt(slug);
-          if (isNaN(productId)) {
-            throw new Error('Invalid product ID');
-          }
-          
-          const [productData, categoryData] = await Promise.all([
-            getProductById(productId),
-            getCategoryByCode(category)
-          ]);
-          
-          console.log('Product data:', productData); // 디버깅을 위한 로그
-          setProduct(productData);
-          setCategoryInfo(categoryData);
-          setCurrentImageIndex(0); // 새 제품이 로드될 때 이미지 인덱스 리셋
-        } catch (err) {
-          setError('제품 정보를 불러오는데 실패했습니다.');
-          console.error('Error fetching product:', err);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchData();
-    }
-  }, [slug, category]);
-
-  if (loading) {
+  if (!product || !categoryInfo) {
     return (
       <Layout>
         <div className="container mx-auto px-6 py-16 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">제품 정보를 불러오는 중입니다...</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (error || !product || !categoryInfo) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-6 py-16 text-center">
-          <p className="text-lg text-red-600 mb-4">
-            {error || '제품을 찾을 수 없습니다.'}
-          </p>
+          <p className="text-lg text-red-600 mb-4">제품을 찾을 수 없습니다.</p>
           <button
             onClick={() => router.back()}
             className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors duration-300"
@@ -88,7 +48,7 @@ export default function ProductDetailPage() {
       parsedSpecifications = JSON.parse(product.specifications);
     }
   } catch (e) {
-    console.error('Error parsing specifications:', e);
+    logger.error('Error parsing specifications:', e);
   }
 
   // 여러 이미지 처리
@@ -107,7 +67,7 @@ export default function ProductDetailPage() {
 
   const productImages = product ? getProductImages(product) : [defaultPlaceholder];
   
-  console.log(`Product: ${product?.name || 'Loading...'}, Images: ${productImages.length}개`); // 디버깅
+  logger.debug(`Product: ${product?.name || 'Loading...'}, Images: ${productImages.length}개`); // 디버깅
 
   return (
     <Layout>
@@ -138,7 +98,7 @@ export default function ProductDetailPage() {
                 <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
                 </svg>
-                <Link href={`/products/${category}`} className="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2">
+                <Link href={`/products/${categoryInfo?.slug ?? categoryInfo?.code ?? ''}`} className="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2">
                   {categoryInfo.name}
                 </Link>
               </div>
@@ -168,7 +128,7 @@ export default function ProductDetailPage() {
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   if (target.src !== defaultPlaceholder) {
-                    console.log(`Product detail image failed for: ${product?.name || 'Unknown'}, using fallback`);
+                    logger.warn(`Product detail image failed for: ${product?.name || 'Unknown'}, using fallback`);
                     target.src = defaultPlaceholder;
                   }
                 }}
@@ -359,3 +319,55 @@ export default function ProductDetailPage() {
     </Layout>
   );
 } 
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { params } = context;
+  const categoryParam = params?.category as string | undefined;
+  const slugParam = params?.slug as string | undefined;
+
+  const productId = slugParam ? parseInt(slugParam, 10) : NaN;
+
+  if (!categoryParam || !slugParam || isNaN(productId)) {
+    return { props: { product: null, categoryInfo: null } };
+  }
+
+  const candidates = [process.env.NEXT_PUBLIC_API_URL, 'http://backend:8000', 'http://localhost:8000'].filter(Boolean) as string[];
+
+  let product: SafetyProduct | null = null;
+  let categoryInfo: SafetyCategory | null = null;
+
+  for (const base of candidates) {
+    try {
+      const prodRes = await fetch(`${base}/api/products/${productId}`);
+      if (!prodRes.ok) throw new Error(`prod fetch failed ${prodRes.status}`);
+      product = await prodRes.json();
+
+      // try slug endpoint first
+      const catRes = await fetch(`${base}/api/categories/slug/${encodeURIComponent(categoryParam)}`);
+      if (catRes.ok) {
+        categoryInfo = await catRes.json();
+      } else {
+        // fallback to list & match
+        const listRes = await fetch(`${base}/api/categories`);
+        if (listRes.ok) {
+          const list = await listRes.json();
+          const found = Array.isArray(list) ? list.find((c: any) => c.code === categoryParam || c.slug === categoryParam || String(c.id) === categoryParam) : null;
+          categoryInfo = found ?? null;
+        }
+      }
+
+      // if we have both, break
+      if (product && categoryInfo) break;
+    } catch (e) {
+      // try next candidate
+      continue;
+    }
+  }
+
+  return {
+    props: {
+      product,
+      categoryInfo,
+    },
+  };
+};

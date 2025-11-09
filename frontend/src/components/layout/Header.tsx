@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getSearchSuggestions, SearchSuggestion } from '@/api/product';
+import { logger } from '@/lib/logger';
 import { getProductImageUrl, ProductWithImage } from '@/utils/image';
 import SafeImage from '@/components/common/SafeImage';
 
@@ -27,7 +28,7 @@ const Header = () => {
       const result = await getSearchSuggestions(query.trim(), 5);
       setSearchSuggestions(result.suggestions);
     } catch (error) {
-      console.error('Error fetching search suggestions:', error);
+      logger.error('Error fetching search suggestions:', error);
       setSearchSuggestions([]);
     } finally {
       setIsSearchLoading(false);

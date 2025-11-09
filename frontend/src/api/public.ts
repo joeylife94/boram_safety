@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '@/lib/logger';
 
 // ✅ Public API - /api/* (GET만 허용)
 const API_BASE_URL = 'http://localhost:8000/api';
@@ -15,7 +16,7 @@ const publicApi = axios.create({
 publicApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('Public API Error:', error);
+    logger.error('Public API Error:', error);
     return Promise.reject(error);
   }
 );

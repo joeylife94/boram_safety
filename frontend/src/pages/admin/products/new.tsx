@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getCategories, createProduct, uploadImage, Category, ProductCreateData } from '@/api/admin';
+import { logger } from '@/lib/logger';
 
 interface ProductForm {
   name: string;
@@ -42,7 +43,7 @@ const NewProductPage = () => {
       const data = await getCategories();
       setCategories(data);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      logger.error('Error fetching categories:', error);
       setError('카테고리를 불러오는데 실패했습니다.');
     }
   };
@@ -135,8 +136,8 @@ const NewProductPage = () => {
       // 성공 시 제품 목록으로 이동
       router.push('/admin/products');
     } catch (error: any) {
-      console.error('Error creating product:', error);
-      console.error('Error response:', error.response?.data);
+      logger.error('Error creating product:', error);
+      logger.error('Error response:', error.response?.data);
       setError(error.response?.data?.detail || '제품 생성 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

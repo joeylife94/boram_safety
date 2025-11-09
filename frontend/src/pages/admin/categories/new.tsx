@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { createCategory, CategoryCreateData } from '@/api/admin';
+import { logger } from '@/lib/logger';
 
 const NewCategoryPage = () => {
   const router = useRouter();
@@ -59,7 +60,7 @@ const NewCategoryPage = () => {
       await createCategory(formData, imageFile);
       router.push('/admin/categories');
     } catch (error: any) {
-      console.error('Error creating category:', error);
+      logger.error('Error creating category:', error);
       setError(error.response?.data?.detail || '카테고리 생성 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

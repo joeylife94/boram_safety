@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getCategories, deleteCategory, Category } from '@/api/admin';
+import { logger } from '@/lib/logger';
 import { getAdminCategoryImageUrl } from '@/utils/image';
 
 const AdminCategoriesPage = () => {
@@ -21,7 +22,7 @@ const AdminCategoriesPage = () => {
       const data = await getCategories();
       setCategories(data);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      logger.error('Error fetching categories:', error);
       setError('카테고리 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
@@ -34,7 +35,7 @@ const AdminCategoriesPage = () => {
         await deleteCategory(id);
         setCategories(categories.filter(c => c.id !== id));
       } catch (error) {
-        console.error('Error deleting category:', error);
+        logger.error('Error deleting category:', error);
         alert('카테고리 삭제 중 오류가 발생했습니다.');
       }
     }

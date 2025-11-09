@@ -3,6 +3,7 @@ import Layout from '@/components/layout/Layout';
 import { getCategories } from '@/api/product';
 import { SafetyCategory } from '@/types/product';
 import { getCategoryImageUrl } from '@/utils/image';
+import { logger } from '@/lib/logger';
 import SafeImage from '@/components/common/SafeImage';
 import Link from 'next/link';
 
@@ -20,7 +21,7 @@ const HomePage = () => {
         setCategories(data.slice(0, 5));
       } catch (err) {
         setError('카테고리를 불러오는데 실패했습니다.');
-        console.error('Failed to fetch categories:', err);
+        logger.error('Failed to fetch categories:', err);
       } finally {
         setLoading(false);
       }

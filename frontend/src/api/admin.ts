@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '@/lib/logger';
 
 // 🔐 Admin API - /api/admin/* (모든 HTTP Methods 허용)
 const API_BASE_URL = 'http://localhost:8000/api/admin';
@@ -15,7 +16,7 @@ const adminApi = axios.create({
 adminApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('Admin API Error:', error);
+    logger.error('Admin API Error:', error);
     return Promise.reject(error);
   }
 );

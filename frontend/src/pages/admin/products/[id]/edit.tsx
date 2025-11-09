@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getProduct, updateProduct, getCategories, Category, ProductUpdateData } from '@/api/admin';
+import { logger } from '@/lib/logger';
 import { getImageUrl } from '@/utils/image';
 
 interface ProductForm {
@@ -114,7 +115,7 @@ const EditProductPage = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error fetching data:', error);
+      logger.error('Error fetching data:', error);
       setError('데이터를 불러오는데 실패했습니다.');
     } finally {
       setInitialLoading(false);
@@ -219,7 +220,7 @@ const EditProductPage = () => {
       // 성공 시 제품 목록으로 이동
       router.push('/admin/products');
     } catch (error: any) {
-      console.error('Error updating product:', error);
+      logger.error('Error updating product:', error);
       setError(error.response?.data?.detail || '제품 업데이트 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

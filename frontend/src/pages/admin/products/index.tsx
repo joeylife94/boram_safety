@@ -12,6 +12,7 @@ import {
   deleteDraft,
   publishDraft
 } from '@/api/admin';
+import { logger } from '@/lib/logger';
 import { getProductImageUrl } from '@/utils/image';
 
 type ViewMode = 'products' | 'drafts';
@@ -55,7 +56,7 @@ const AdminProductsPage = () => {
       });
       setProducts(data);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      logger.error('Error fetching products:', error);
       setError('제품 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
@@ -67,7 +68,7 @@ const AdminProductsPage = () => {
       const response = await getDrafts({ limit: 100 });
       setDrafts(response.items);
     } catch (error) {
-      console.error('Error fetching drafts:', error);
+      logger.error('Error fetching drafts:', error);
     }
   };
 
@@ -76,7 +77,7 @@ const AdminProductsPage = () => {
       const data = await getCategories();
       setCategories(data);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      logger.error('Error fetching categories:', error);
     }
   };
 
@@ -86,7 +87,7 @@ const AdminProductsPage = () => {
         await deleteProduct(id);
         setProducts(products.filter(p => p.id !== id));
       } catch (error) {
-        console.error('Error deleting product:', error);
+        logger.error('Error deleting product:', error);
         alert('제품 삭제 중 오류가 발생했습니다.');
       }
     }
@@ -98,7 +99,7 @@ const AdminProductsPage = () => {
         await deleteDraft(id);
         setDrafts(drafts.filter(d => d.id !== id));
       } catch (error) {
-        console.error('Error deleting draft:', error);
+        logger.error('Error deleting draft:', error);
         alert('임시 저장본 삭제 중 오류가 발생했습니다.');
       }
     }
@@ -112,7 +113,7 @@ const AdminProductsPage = () => {
         await fetchDrafts();
         alert('제품이 성공적으로 발행되었습니다.');
       } catch (error) {
-        console.error('Error publishing draft:', error);
+        logger.error('Error publishing draft:', error);
         alert('제품 발행 중 오류가 발생했습니다.');
       }
     }

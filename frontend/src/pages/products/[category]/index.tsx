@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import Layout from '@/components/layout/Layout';
 import { useState, useEffect } from 'react';
 import { getCategoryByCode, getProductsByCategory, searchProducts, getCategories, SearchParams, SearchResult } from '@/api/product';
+import { logger } from '@/lib/logger';
 import { SafetyCategory, SafetyProduct } from '@/types/product';
 import { getProductImageUrl } from '@/utils/image';
 import Link from 'next/link';
@@ -32,15 +33,15 @@ export default function CategoryPage() {
   const performSearch = async (params: SearchParams) => {
     try {
       setSearchLoading(true);
-      console.log('Performing search with params:', params);
+  logger.debug('Performing search with params:', params);
       
       const result = await searchProducts(params);
-      console.log('Search result:', result);
+  logger.debug('Search result:', result);
       
       setProducts(result.products);
       setTotalCount(result.total_count);
     } catch (err) {
-      console.error('Search error:', err);
+  logger.error('Search error:', err);
       
       // 검색 실패 시 카테고리 필터를 적용한 원본 데이터로 필터링
       if (categoryInfo) {
@@ -69,8 +70,8 @@ export default function CategoryPage() {
             getProductsByCategory(category)
           ]);
           
-          console.log('Category data:', categoryData);
-          console.log('Products data:', productsData);
+          logger.debug('Category data:', categoryData);
+          logger.debug('Products data:', productsData);
           setCategoryInfo(categoryData);
           setProducts(productsData);
           setOriginalProducts(productsData);
@@ -84,7 +85,7 @@ export default function CategoryPage() {
           
         } catch (err) {
           setError('제품 목록을 불러오는데 실패했습니다.');
-          console.error('Error fetching products:', err);
+          logger.error('Error fetching products:', err);
         } finally {
           setLoading(false);
         }

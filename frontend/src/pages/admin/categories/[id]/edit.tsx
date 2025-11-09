@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getCategory, updateCategory, CategoryUpdateData } from '@/api/admin';
 import { getImageUrl } from '@/utils/image';
+import { logger } from '@/lib/logger';
 
 const EditCategoryPage = () => {
   const router = useRouter();
@@ -47,7 +48,7 @@ const EditCategoryPage = () => {
         setCurrentImagePath(category.image);
       }
     } catch (error: any) {
-      console.error('Error fetching category:', error);
+      logger.error('Error fetching category:', error);
       setError('카테고리 정보를 불러오는데 실패했습니다.');
     } finally {
       setInitialLoading(false);
@@ -96,7 +97,7 @@ const EditCategoryPage = () => {
       await updateCategory(categoryId, formData, imageFile);
       router.push('/admin/categories');
     } catch (error: any) {
-      console.error('Error updating category:', error);
+      logger.error('Error updating category:', error);
       setError(error.response?.data?.detail || '카테고리 업데이트 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

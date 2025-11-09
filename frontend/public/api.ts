@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../src/lib/logger';
 
 /**
  * ✅ Public API Client - 읽기 전용 (GET만 사용)
@@ -19,7 +20,7 @@ const publicApi = axios.create({
 publicApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('Public API Error:', error);
+    logger.error('Public API Error:', error);
     return Promise.reject(error);
   }
 );

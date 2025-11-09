@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getDashboard, DashboardResponse } from '@/api/admin';
+import { logger } from '@/lib/logger';
 
 interface DashboardStats {
   totalProducts: number;
@@ -39,7 +40,7 @@ const AdminRedirectPage = () => {
         totalImages: response.stats.total_images || 0,
       });
     } catch (error) {
-      console.error('Dashboard data fetch error:', error);
+      logger.error('Dashboard data fetch error:', error);
       setError('대시보드 데이터를 불러오는데 실패했습니다.');
       // API 에러 시에도 기본값 유지
       setStats({

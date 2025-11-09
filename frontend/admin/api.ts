@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../src/lib/logger';
 
 /**
  * 🔐 Admin API Client - 전체 CRUD 작업 (GET, POST, PUT, DELETE)
@@ -20,7 +21,7 @@ const adminApi = axios.create({
 adminApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('Admin API Error:', error);
+    logger.error('Admin API Error:', error);
     return Promise.reject(error);
   }
 );

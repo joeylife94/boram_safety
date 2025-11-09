@@ -14,6 +14,8 @@ export interface ApiErrorResponse {
   error: ApiError;
 }
 
+import { logger } from '@/lib/logger';
+
 /**
  * API 에러인지 확인
  */
@@ -74,13 +76,12 @@ export function getStatusMessage(statusCode: number): string {
  * 에러를 콘솔에 로깅 (개발 환경에서만)
  */
 export function logError(error: any, context?: string) {
-  if (process.env.NODE_ENV === 'development') {
-    console.error(`[Error${context ? ` - ${context}` : ''}]:`, error);
-    
-    if (error.response) {
-      console.error('Response data:', error.response.data);
-      console.error('Response status:', error.response.status);
-    }
+  // Use centralized logger. In production logger.error will send remote logs if configured.
+  logger.error(`[Error${context ? ` - ${context}` : ''}]:`, error);
+
+  if (error && error.response) {
+    logger.error('Response data:', error.response.data);
+    logger.error('Response status:', error.response.status);
   }
 }
 

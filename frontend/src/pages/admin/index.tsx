@@ -7,6 +7,7 @@ import {
   getRecentAuditActivities,
   AuditLog
 } from '@/api/admin';
+import { logger } from '@/lib/logger';
 
 interface DashboardStats {
   totalProducts: number;
@@ -50,11 +51,11 @@ const AdminDashboard = () => {
         const activities = await getRecentAuditActivities(10);
         setRecentActivities(activities);
       } catch (auditError) {
-        console.error('Audit log fetch error:', auditError);
+        logger.error('Audit log fetch error:', auditError);
         // Audit log는 실패해도 대시보드는 표시
       }
     } catch (error) {
-      console.error('Dashboard data fetch error:', error);
+      logger.error('Dashboard data fetch error:', error);
       setError('대시보드 데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);

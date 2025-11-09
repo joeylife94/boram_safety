@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useRouter } from 'next/router';
 import { getCategories } from '@/api/product';
+import { logger } from '@/lib/logger';
 import { SafetyCategory } from '@/types/product';
 import { getCategoryImageUrl } from '@/utils/image';
 
@@ -19,11 +20,11 @@ const ProductsPage = () => {
       try {
         setLoading(true);
         const data = await getCategories();
-        console.log('Categories data:', data); // 디버깅을 위한 로그
+        logger.debug('Categories data:', data); // 디버깅을 위한 로그
         setCategories(data);
       } catch (err) {
         setError('카테고리를 불러오는데 실패했습니다.');
-        console.error('Error fetching categories:', err);
+        logger.error('Error fetching categories:', err);
       } finally {
         setLoading(false);
       }
@@ -76,7 +77,7 @@ const ProductsPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {categories.map((category) => {
               const imageUrl = getCategoryImageUrl(category);
-              console.log(`Category: ${category.name}, Image URL: ${imageUrl}`); // 디버깅
+              logger.debug(`Category: ${category.name}, Image URL: ${imageUrl}`); // 디버깅
               
               return (
                 <div
@@ -92,9 +93,9 @@ const ProductsPage = () => {
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         if (target.src !== defaultPlaceholder) {
-                          console.log(`Image failed for category: ${category.name}, trying fallback`);
-                          target.src = defaultPlaceholder;
-                        }
+                            logger.warn(`Image failed for category: ${category.name}, trying fallback`);
+                            target.src = defaultPlaceholder;
+                          }
                       }}
                     />
                   </div>
