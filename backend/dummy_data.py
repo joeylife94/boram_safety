@@ -114,9 +114,25 @@ categories_data = [
 def get_image_files(category_code):
     """특정 카테고리의 실제 이미지 파일들을 스캔"""
     try:
-        image_dir = f"backend/static/images/{category_code}"
-        if not os.path.exists(image_dir):
-            print(f"⚠️  이미지 디렉토리가 없습니다: {image_dir}")
+        # 여러 실행 환경을 고려해서 가능한 이미지 디렉토리 후보를 검사합니다.
+        candidates = [
+            f"backend/static/images/{category_code}",      # 로컬에서 repo 루트 기준
+            f"static/images/{category_code}",              # 컨테이너 내 또는 backend 작업 디렉토리 기준
+            f"../frontend/public/images/{category_code}",  # 기타 상대 경로
+            f"frontend/public/images/{category_code}",    # repo root에서 실행할 때
+        ]
+
+        image_dir = None
+        for c in candidates:
+            if os.path.exists(c):
+                image_dir = c
+                break
+
+        if not image_dir:
+            # 디버그용: 표시할 후보 경로를 함께 출력
+            print("⚠️  이미지 디렉토리가 없습니다. 시도한 경로:")
+            for c in candidates:
+                print(f"   - {c}")
             return []
         
         # img_*.jpg 패턴의 파일들 찾기
@@ -130,15 +146,14 @@ def get_image_files(category_code):
             return int(match.group(1)) if match else 0
         
         image_files.sort(key=extract_number, reverse=True)  # 큰 번호부터
-        
-        print(f"📁 {category_code}: {len(image_files)}개 이미지 파일 발견")
+        print(f"📁 {category_code}: {len(image_files)}개 이미지 파일 발견 (경로: {image_dir})")
         for img_file in image_files[:5]:  # 처음 5개만 표시
             print(f"   - {os.path.basename(img_file)}")
         if len(image_files) > 5:
             print(f"   ... 외 {len(image_files) - 5}개")
-            
+
         return image_files
-        
+
     except Exception as e:
         print(f"❌ {category_code} 이미지 스캔 중 오류: {e}")
         return []
