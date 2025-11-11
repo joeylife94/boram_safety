@@ -1,7 +1,9 @@
 from database import Base, engine
 from models.safety import SafetyCategory, SafetyProduct
-
 from models.company import CompanyInfo, History, Certification, Client
+from models.audit import AuditLog
+from models.draft import DraftProduct
+from models.settings import SiteSettings
 
 print("Creating database tables...")
 

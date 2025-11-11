@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 import math
 
 from database import get_db
@@ -8,6 +10,7 @@ from crud import product as product_crud
 from crud import category as category_crud
 from crud import audit as audit_crud
 from crud import draft as draft_crud
+from crud import settings as settings_crud
 from schemas.product import ProductResponse, ProductCreate, ProductUpdate, ProductSearchParams, ProductSearchResponse
 from schemas.category import Category, CategoryCreate, CategoryUpdate
 from schemas.audit import AuditLogResponse, AuditLogFilter
@@ -15,6 +18,7 @@ from schemas.draft import (
     DraftProductCreate, DraftProductUpdate, DraftProductResponse, 
     DraftListResponse, PublishDraftRequest
 )
+from schemas.settings import SiteSettingsResponse, SiteSettingsUpdate
 from models.safety import SafetyProduct, SafetyCategory
 from models.audit import AuditAction, AuditEntityType
 from core.logger import get_logger
@@ -724,7 +728,6 @@ async def bulk_delete_products(
 @router.get("/products/export/template")
 async def download_product_template():
     """제품 등록용 엑셀 템플릿을 다운로드합니다."""
-    from fastapi.responses import StreamingResponse
     import openpyxl
     from io import BytesIO
     
@@ -1277,5 +1280,238 @@ async def get_product_draft(
     if not db_draft:
         raise HTTPException(status_code=404, detail="해당 제품의 Draft가 없습니다")
     return db_draft
+
+
+# ==================== Excel 업로드/다운로드 ====================
+
+from utils.excel_handler import ExcelHandler
+
+@router.get("/excel/template")
+async def download_excel_template():
+    """
+    제품 Excel 업로드 템플릿 다운로드
+    
+    - 제품 데이터 입력 양식이 포함된 Excel 파일을 다운로드합니다
+    - 예시 데이터 1행이 포함되어 있습니다
+    """
+    logger.info("Excel 템플릿 다운로드")
+    
+    template = ExcelHandler.create_template()
+    
+    return StreamingResponse(
+        template,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=product_template_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        }
+    )
+
+
+@router.get("/excel/export")
+async def export_products_excel(
+    category_code: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    제품 데이터를 Excel로 내보내기
+    
+    - 전체 또는 특정 카테고리의 제품을 Excel 파일로 다운로드합니다
+    - category_code: 특정 카테고리만 내보내기 (선택사항)
+    """
+    logger.info(f"Excel 내보내기 - 카테고리: {category_code or '전체'}")
+    
+    try:
+        excel_file = await ExcelHandler.export_products(db, category_code)
+        
+        filename = f"products_{category_code if category_code else 'all'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        return StreamingResponse(
+            excel_file,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Excel 내보내기 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"Excel 내보내기 실패: {str(e)}")
+
+
+@router.post("/excel/import")
+async def import_products_excel(
+    file: UploadFile = File(...),
+    mode: str = Form('append'),
+    db: Session = Depends(get_db)
+):
+    """
+    Excel 파일에서 제품 데이터 가져오기
+    
+    - file: Excel 파일 (.xlsx, .xls)
+    - mode: 'append' (기존 데이터에 추가) 또는 'replace' (전체 교체)
+    
+    Returns:
+        - total: 전체 처리 건수
+        - success_count: 성공 건수
+        - error_count: 실패 건수
+        - errors: 에러 목록
+    """
+    logger.info(f"Excel 가져오기 - 파일: {file.filename}, 모드: {mode}")
+    
+    # 파일 유효성 검사
+    is_valid, message = ExcelHandler.validate_excel_file(file)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=message)
+    
+    try:
+        result = await ExcelHandler.import_products(file, db, mode)
+        
+        if result['success']:
+            logger.info(f"Excel 가져오기 완료 - 성공: {result['success_count']}, 실패: {result['error_count']}")
+        else:
+            logger.error(f"Excel 가져오기 실패 - {result['message']}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Excel 가져오기 중 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"파일 처리 중 오류: {str(e)}")
+
+
+@router.post("/products/{product_id}/duplicate")
+async def duplicate_product(
+    product_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    제품 복제
+    
+    - 기존 제품을 복사하여 새로운 제품을 생성합니다
+    - 제품명에 '(복사본)'이 추가됩니다
+    """
+    logger.info(f"제품 복제 - ID: {product_id}")
+    
+    # 원본 제품 조회
+    original = db.query(SafetyProduct).filter(SafetyProduct.id == product_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="제품을 찾을 수 없습니다")
+    
+    try:
+        # 새 제품 데이터 생성
+        new_product = SafetyProduct(
+            category_id=original.category_id,
+            name=f"{original.name} (복사본)",
+            model_number=f"{original.model_number}_copy" if original.model_number else None,
+            price=original.price,
+            description=original.description,
+            specifications=original.specifications,
+            stock_status=original.stock_status,
+            file_name=original.file_name,
+            file_path=original.file_path,
+            display_order=original.display_order,
+            is_featured=False  # 복사본은 추천 제품 아님
+        )
+        
+        db.add(new_product)
+        db.commit()
+        db.refresh(new_product)
+        
+        logger.info(f"제품 복제 완료 - 새 ID: {new_product.id}")
+        
+        # Audit Log
+        log_product_create(db, new_product, user_id="admin", notes=f"제품 #{product_id} 복제")
+        
+        return {
+            "success": True,
+            "message": "제품이 복제되었습니다",
+            "original_id": product_id,
+            "new_id": new_product.id,
+            "new_product": new_product
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"제품 복제 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"제품 복제 실패: {str(e)}")
+
+
+# ==================== 사이트 설정 관리 ====================
+
+@router.get("/settings", response_model=SiteSettingsResponse)
+async def get_site_settings(db: Session = Depends(get_db)):
+    """
+    사이트 설정 조회
+    
+    - 회사명, 로고, 연락처 등 사이트 전역 설정을 조회합니다
+    - 설정이 없으면 기본값으로 생성됩니다
+    """
+    logger.info("사이트 설정 조회")
+    settings = settings_crud.get_or_create_settings(db)
+    return settings
+
+
+@router.put("/settings", response_model=SiteSettingsResponse)
+async def update_site_settings(
+    settings_data: SiteSettingsUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    사이트 설정 업데이트
+    
+    - 회사명, 슬로건, 연락처 등을 수정합니다
+    - 제공되지 않은 필드는 기존 값을 유지합니다
+    """
+    logger.info("사이트 설정 업데이트")
+    
+    try:
+        settings = settings_crud.update_settings(db, settings_data)
+        logger.info(f"사이트 설정 업데이트 완료")
+        
+        # Audit Log
+        from utils.audit_logger import log_audit
+        log_audit(
+            db=db,
+            action=AuditAction.UPDATE,
+            entity_type=AuditEntityType.OTHER,
+            entity_id=settings.id,
+            changes_summary="사이트 설정 업데이트",
+            user_id="admin"
+        )
+        
+        return settings
+        
+    except Exception as e:
+        logger.error(f"사이트 설정 업데이트 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"설정 업데이트 실패: {str(e)}")
+
+
+@router.post("/settings/reset", response_model=SiteSettingsResponse)
+async def reset_site_settings(db: Session = Depends(get_db)):
+    """
+    사이트 설정 초기화
+    
+    - 모든 설정을 기본값으로 되돌립니다
+    """
+    logger.info("사이트 설정 초기화")
+    
+    try:
+        settings = settings_crud.reset_settings(db)
+        logger.info("사이트 설정 초기화 완료")
+        
+        # Audit Log
+        from utils.audit_logger import log_audit
+        log_audit(
+            db=db,
+            action=AuditAction.UPDATE,
+            entity_type=AuditEntityType.OTHER,
+            entity_id=settings.id,
+            changes_summary="사이트 설정 초기화",
+            user_id="admin"
+        )
+        
+        return settings
+        
+    except Exception as e:
+        logger.error(f"사이트 설정 초기화 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"설정 초기화 실패: {str(e)}")
 
  

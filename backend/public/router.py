@@ -6,8 +6,10 @@ import math
 from database import get_db
 from crud import product as product_crud
 from crud import category as category_crud
+from crud import settings as settings_crud
 from schemas.product import ProductResponse, ProductSearchParams, ProductSearchResponse
 from schemas.category import Category
+from schemas.settings import SiteSettingsPublic
 
 # ✅ Public Router - GET만 허용
 router = APIRouter(
@@ -18,6 +20,19 @@ router = APIRouter(
 def public_health_check():
     """Public API 상태 확인"""
     return {"status": "healthy", "role": "public"}
+
+
+@router.get("/settings", response_model=SiteSettingsPublic)
+async def get_public_settings(db: Session = Depends(get_db)):
+    """
+    공개용 사이트 설정 조회
+    
+    - 회사명, 연락처 등 공개 정보만 반환합니다
+    - 민감한 정보는 제외됩니다
+    """
+    settings = settings_crud.get_or_create_settings(db)
+    return settings
+
 
 @router.get("/categories", response_model=List[Category])
 async def get_categories(
