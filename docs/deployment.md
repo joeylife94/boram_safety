@@ -1,321 +1,639 @@
-# 배포 가이드 - Boram Safety (v2.0 - Docker)
+# 배포 가이드# 배포 가이드 - Boram Safety (v2.0 - Docker)
 
-이 문서는 보람안전 프로젝트를 서버에 배포하는 방법을 안내합니다. 배포 방식은 크게 두 가지가 있습니다.
 
-1.  **Docker를 이용한 간편 배포 (권장)**: `docker-compose` 명령 한 줄로 전체 스택(Frontend, Backend, DB)을 실행합니다. 환경 분리, 쉬운 확장, 일관된 실행 환경의 장점이 있습니다.
+
+> **프로젝트**: 보람안전물산(주) 웹사이트  이 문서는 보람안전 프로젝트를 서버에 배포하는 방법을 안내합니다. 배포 방식은 크게 두 가지가 있습니다.
+
+> **최종 업데이트**: 2025년 11월 11일  
+
+> **버전**: v1.31.  **Docker를 이용한 간편 배포 (권장)**: `docker-compose` 명령 한 줄로 전체 스택(Frontend, Backend, DB)을 실행합니다. 환경 분리, 쉬운 확장, 일관된 실행 환경의 장점이 있습니다.
+
 2.  **서버에 직접 배포 (고급)**: 서버에 직접 Node.js, Python, PostgreSQL 등을 설치하고 설정하는 전통적인 방식입니다. 시스템에 대한 깊은 이해가 필요합니다.
 
 ---
 
+---
+
+## 📋 목차
+
 ## 🐳 Docker를 이용한 간편 배포 (권장)
 
-이 방식은 서버에 [Docker](https://docs.docker.com/get-docker/)와 [Docker Compose](https://docs.docker.com/compose/install/)가 설치되어 있는 것을 전제로 합니다.
+1. [배포 전 체크리스트](#-배포-전-체크리스트)
 
-### 1. 프로젝트 준비
-```bash
-# 프로젝트 클론
+2. [Docker 배포 (권장)](#-docker-배포-권장)이 방식은 서버에 [Docker](https://docs.docker.com/get-docker/)와 [Docker Compose](https://docs.docker.com/compose/install/)가 설치되어 있는 것을 전제로 합니다.
+
+3. [프로덕션 배포](#-프로덕션-배포)
+
+4. [배포 플랫폼별 가이드](#-배포-플랫폼별-가이드)### 1. 프로젝트 준비
+
+5. [배포 후 확인사항](#-배포-후-확인사항)```bash
+
+6. [트러블슈팅](#-트러블슈팅)# 프로젝트 클론
+
 git clone https://github.com/joeylife94/boram_safety.git
-cd boram-safety
+
+---cd boram-safety
+
 ```
+
+## ✅ 배포 전 체크리스트
 
 ### 2. 환경 변수 설정
-프로젝트 최상단에 `.env` 파일을 생성하고 아래 내용을 채웁니다. 이 값들은 `docker-compose.yml`에서 참조하여 각 컨테이너의 환경변수로 사용됩니다.
 
-```env
-# .env 파일 예시
-# PostgreSQL Database
-DB_USER=boramadmin
-DB_PASSWORD=supersecretpassword
+### 필수 확인사항프로젝트 최상단에 `.env` 파일을 생성하고 아래 내용을 채웁니다. 이 값들은 `docker-compose.yml`에서 참조하여 각 컨테이너의 환경변수로 사용됩니다.
+
+
+
+**보안:**```env
+
+- [ ] `.env` 파일 생성 및 비밀번호 설정# .env 파일 예시
+
+- [ ] Git 히스토리에 비밀번호 없는지 확인# PostgreSQL Database
+
+- [ ] `.env` 파일이 `.gitignore`에 포함DB_USER=boramadmin
+
+- [ ] CORS_ORIGINS 프로덕션 도메인 설정DB_PASSWORD=supersecretpassword
+
 DB_NAME=boramsafetydb
 
-# Frontend에서 사용할 Backend API 주소
-# Docker 네트워크 내부에서는 서비스 이름으로 통신하지만,
-# 사용자의 브라우저에서는 이 주소를 보고 API를 호출하므로 외부에서 접근 가능한 주소를 적어줍니다.
+**코드:**
+
+- [ ] 모든 테스트 통과# Frontend에서 사용할 Backend API 주소
+
+- [ ] console.log 제거# Docker 네트워크 내부에서는 서비스 이름으로 통신하지만,
+
+- [ ] TypeScript 에러 없음# 사용자의 브라우저에서는 이 주소를 보고 API를 호출하므로 외부에서 접근 가능한 주소를 적어줍니다.
+
 # 예: http://localhost:8000 또는 http://your-domain.com/api
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
+
+**데이터베이스:**NEXT_PUBLIC_API_URL=http://localhost:8000
+
+- [ ] PostgreSQL 13+ 준비```
+
+- [ ] 데이터베이스 백업 전략 수립
 
 ### 3. 애플리케이션 실행
-아래 명령어를 실행하면 Docker 이미지를 빌드하고 3개의 컨테이너(db, backend, frontend)를 실행합니다.
 
-```bash
+**문서:**아래 명령어를 실행하면 Docker 이미지를 빌드하고 3개의 컨테이너(db, backend, frontend)를 실행합니다.
+
+- [ ] README.md 최신화
+
+- [ ] API 문서 확인```bash
+
 # --build 옵션으로 이미지를 새로 빌드하며 컨테이너를 시작합니다.
-# -d 옵션은 백그라운드에서 실행합니다.
-docker-compose up --build -d
-```
 
-### 4. 실행 확인
+---# -d 옵션은 백그라운드에서 실행합니다.
+
+docker-compose up --build -d
+
+## 🐳 Docker 배포 (권장)```
+
+
+
+### 개발 환경### 4. 실행 확인
+
 - **Frontend**: 브라우저에서 `http://localhost:3000`으로 접속
-- **Backend API**: `http://localhost:8000/docs`로 접속하여 FastAPI 문서 확인
-- **컨테이너 상태 확인**: `docker-compose ps`
-- **로그 확인**: `docker-compose logs -f [서비스이름]` (예: `docker-compose logs -f frontend`)
+
+```bash- **Backend API**: `http://localhost:8000/docs`로 접속하여 FastAPI 문서 확인
+
+# 1. 프로젝트 클론- **컨테이너 상태 확인**: `docker-compose ps`
+
+git clone https://github.com/joeylife94/boram_safety.git- **로그 확인**: `docker-compose logs -f [서비스이름]` (예: `docker-compose logs -f frontend`)
+
+cd boram_safety
 
 ### 5. 애플리케이션 종료
-```bash
-# 컨테이너를 중지하고 제거합니다.
-docker-compose down
 
-# 데이터베이스 볼륨까지 완전히 삭제하려면 아래 명령을 사용합니다.
-# docker-compose down --volumes
+# 2. 환경 변수 설정```bash
+
+cp .env.example .env# 컨테이너를 중지하고 제거합니다.
+
+# .env 파일 편집 (DB_PASSWORD 등 변경)docker-compose down
+
+
+
+# 3. Docker Compose 실행# 데이터베이스 볼륨까지 완전히 삭제하려면 아래 명령을 사용합니다.
+
+docker-compose up -d# docker-compose down --volumes
+
 ```
 
----
+# 4. 데이터베이스 초기화
+
+docker-compose exec backend python create_tables.py---
+
+docker-compose exec backend python dummy_data.py
 
 ## 🛠️ 서버에 직접 배포 (고급)
 
-이 섹션은 서버에 직접 Python, Node.js, PostgreSQL 등을 설치하여 배포하는 방법을 안내합니다.
+# 5. 로그 확인
 
-### 시스템 요구사항
+docker-compose logs -f이 섹션은 서버에 직접 Python, Node.js, PostgreSQL 등을 설치하여 배포하는 방법을 안내합니다.
+
+
+
+# 접속: http://localhost:3000### 시스템 요구사항
+
+```
 
 #### 서버 환경
-- **OS**: Ubuntu 20.04+ / CentOS 8+ / Windows Server 2019+
+
+### 프로덕션 환경- **OS**: Ubuntu 20.04+ / CentOS 8+ / Windows Server 2019+
+
 - **RAM**: 최소 4GB, 권장 8GB+
-- **디스크**: 최소 20GB, 권장 50GB+
+
+#### docker-compose.prod.yml- **디스크**: 최소 20GB, 권장 50GB+
+
 - **CPU**: 2코어 이상
 
-#### 소프트웨어 요구사항
+```yaml
+
+version: '3.8'#### 소프트웨어 요구사항
+
 - **Node.js**: 18.0 이상
-- **Python**: 3.9 이상
-- **PostgreSQL**: 14.0 이상
-- **Nginx**: 1.18+ (웹서버용)
-- **PM2**: Node.js 프로세스 관리
-- **Supervisor**: Python 프로세스 관리
 
----
+services:- **Python**: 3.9 이상
 
-## 🗄️ 데이터베이스 설정
+  db:- **PostgreSQL**: 14.0 이상
 
-### PostgreSQL 설치 및 설정
+    image: postgres:13-alpine- **Nginx**: 1.18+ (웹서버용)
 
-#### Ubuntu/Debian
+    container_name: boram_db_prod- **PM2**: Node.js 프로세스 관리
+
+    volumes:- **Supervisor**: Python 프로세스 관리
+
+      - postgres_data:/var/lib/postgresql/data/
+
+    environment:---
+
+      - POSTGRES_USER=${DB_USER}
+
+      - POSTGRES_PASSWORD=${DB_PASSWORD}## 🗄️ 데이터베이스 설정
+
+      - POSTGRES_DB=${DB_NAME}
+
+    restart: always### PostgreSQL 설치 및 설정
+
+    networks:
+
+      - boram_network#### Ubuntu/Debian
+
 ```bash
-# PostgreSQL 설치
-sudo apt update
-sudo apt install postgresql postgresql-contrib
 
-# PostgreSQL 서비스 시작
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
+  backend:# PostgreSQL 설치
 
-# 데이터베이스 및 사용자 생성
-sudo -u postgres psql
-```
+    container_name: boram_backend_prodsudo apt update
 
-#### PostgreSQL 설정
-```sql
--- 데이터베이스 생성
-CREATE DATABASE boram_safety;
+    build:sudo apt install postgresql postgresql-contrib
 
--- 사용자 생성 및 권한 부여
-CREATE USER boram_user WITH PASSWORD 'your_secure_password';
+      context: ./backend
+
+      dockerfile: Dockerfile# PostgreSQL 서비스 시작
+
+    command: uvicorn main:app --host 0.0.0.0 --port 8000sudo systemctl start postgresql
+
+    environment:sudo systemctl enable postgresql
+
+      - DB_USER=${DB_USER}
+
+      - DB_PASSWORD=${DB_PASSWORD}# 데이터베이스 및 사용자 생성
+
+      - DB_HOST=dbsudo -u postgres psql
+
+      - DB_PORT=5432```
+
+      - DB_NAME=${DB_NAME}
+
+      - ENVIRONMENT=production#### PostgreSQL 설정
+
+      - FRONTEND_URL=${FRONTEND_URL}```sql
+
+    depends_on:-- 데이터베이스 생성
+
+      - dbCREATE DATABASE boram_safety;
+
+    restart: always
+
+    networks:-- 사용자 생성 및 권한 부여
+
+      - boram_networkCREATE USER boram_user WITH PASSWORD 'your_secure_password';
+
 GRANT ALL PRIVILEGES ON DATABASE boram_safety TO boram_user;
 
--- 종료
-\q
-```
+  frontend:
 
-#### 원격 접속 허용 (필요시)
-```bash
-# postgresql.conf 수정
+    container_name: boram_frontend_prod-- 종료
+
+    build:\q
+
+      context: ./frontend```
+
+      dockerfile: Dockerfile
+
+    restart: always#### 원격 접속 허용 (필요시)
+
+    networks:```bash
+
+      - boram_network# postgresql.conf 수정
+
 sudo nano /etc/postgresql/14/main/postgresql.conf
-# listen_addresses = '*' 주석 해제
 
-# pg_hba.conf 수정
-sudo nano /etc/postgresql/14/main/pg_hba.conf
-# host all all 0.0.0.0/0 md5 추가
+  nginx:# listen_addresses = '*' 주석 해제
 
-# 재시작
-sudo systemctl restart postgresql
-```
+    image: nginx:alpine
 
----
+    container_name: boram_nginx# pg_hba.conf 수정
 
-## 🔧 백엔드 배포
+    ports:sudo nano /etc/postgresql/14/main/pg_hba.conf
 
-### 1. 프로젝트 준비
+      - "80:80"# host all all 0.0.0.0/0 md5 추가
+
+      - "443:443"
+
+    volumes:# 재시작
+
+      - ./nginx/nginx.conf:/etc/nginx/nginx.confsudo systemctl restart postgresql
+
+      - ./nginx/ssl:/etc/nginx/ssl```
+
+    depends_on:
+
+      - frontend---
+
+      - backend
+
+    restart: always## 🔧 백엔드 배포
+
+    networks:
+
+      - boram_network### 1. 프로젝트 준비
+
 ```bash
-# 프로젝트 클론
-git clone https://github.com/joeylife94/boram_safety.git
+
+volumes:# 프로젝트 클론
+
+  postgres_data:git clone https://github.com/joeylife94/boram_safety.git
+
 cd boram-safety/backend
 
-# Python 가상환경 생성
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
+networks:
+
+  boram_network:# Python 가상환경 생성
+
+    driver: bridgepython3 -m venv venv
+
+```source venv/bin/activate  # Linux/Mac
+
 # venv\Scripts\activate   # Windows
 
-# 의존성 설치
-pip install -r requirements.txt
-```
+#### Nginx 설정
 
-### 2. 환경 변수 설정
-```bash
+# 의존성 설치
+
+```nginxpip install -r requirements.txt
+
+# nginx/nginx.conf```
+
+upstream frontend {
+
+    server frontend:3000;### 2. 환경 변수 설정
+
+}```bash
+
 # .env 파일 생성
-nano .env
-```
+
+upstream backend {nano .env
+
+    server backend:8000;```
+
+}
 
 ```env
-# .env 파일 내용
-DATABASE_URL=postgresql://boram_user:your_secure_password@localhost:5432/boram_safety
-DEBUG=False
-SECRET_KEY=your_secret_key_here
-ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+
+server {# .env 파일 내용
+
+    listen 80;DATABASE_URL=postgresql://boram_user:your_secure_password@localhost:5432/boram_safety
+
+    server_name yourdomain.com;DEBUG=False
+
+    return 301 https://$server_name$request_uri;SECRET_KEY=your_secret_key_here
+
+}ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+
 CORS_ORIGINS=https://your-domain.com,https://www.your-domain.com
-```
 
-### 3. 데이터베이스 마이그레이션
+server {```
+
+    listen 443 ssl http2;
+
+    server_name yourdomain.com;### 3. 데이터베이스 마이그레이션
+
 ```bash
-# 테이블 생성
-python create_tables.py
 
-# 데이터 확인
-python -c "
-from database import get_db
-from crud.category import get_categories
+    ssl_certificate /etc/nginx/ssl/cert.pem;# 테이블 생성
+
+    ssl_certificate_key /etc/nginx/ssl/key.pem;python create_tables.py
+
+
+
+    location / {# 데이터 확인
+
+        proxy_pass http://frontend;python -c "
+
+        proxy_set_header Host $host;from database import get_db
+
+    }from crud.category import get_categories
+
 from crud.product import get_products
 
-db = next(get_db())
-categories = get_categories(db)
-products = get_products(db)
-print(f'카테고리: {len(categories)}개')
-print(f'제품: {len(products)}개')
-"
-```
+    location /api {
 
-### 4. Gunicorn 설정
-```bash
-# Gunicorn 설치
+        proxy_pass http://backend;db = next(get_db())
+
+        proxy_set_header Host $host;categories = get_categories(db)
+
+    }products = get_products(db)
+
+}print(f'카테고리: {len(categories)}개')
+
+```print(f'제품: {len(products)}개')
+
+"
+
+#### 프로덕션 실행```
+
+
+
+```bash### 4. Gunicorn 설정
+
+docker-compose -f docker-compose.prod.yml up -d```bash
+
+```# Gunicorn 설치
+
 pip install gunicorn
 
+---
+
 # Gunicorn 설정 파일 생성
-nano gunicorn_config.py
+
+## 🚀 프로덕션 배포nano gunicorn_config.py
+
 ```
+
+### 환경 변수 (.env)
 
 ```python
-# gunicorn_config.py
-import multiprocessing
 
-# 서버 설정
-bind = "0.0.0.0:8000"
-workers = multiprocessing.cpu_count() * 2 + 1
+```bash# gunicorn_config.py
+
+# Databaseimport multiprocessing
+
+DB_USER=prod_user
+
+DB_PASSWORD=super_secure_password_change_this# 서버 설정
+
+DB_HOST=dbbind = "0.0.0.0:8000"
+
+DB_NAME=boram_safety_prodworkers = multiprocessing.cpu_count() * 2 + 1
+
 worker_class = "uvicorn.workers.UvicornWorker"
-worker_connections = 1000
-max_requests = 1000
-max_requests_jitter = 100
+
+# URLsworker_connections = 1000
+
+FRONTEND_URL=https://yourdomain.commax_requests = 1000
+
+NEXT_PUBLIC_API_URL=https://yourdomain.com/apimax_requests_jitter = 100
+
+CORS_ORIGINS=https://yourdomain.com
 
 # 로깅
-accesslog = "/var/log/boram_safety/access.log"
-errorlog = "/var/log/boram_safety/error.log"
-loglevel = "info"
 
-# 프로세스
+# Securityaccesslog = "/var/log/boram_safety/access.log"
+
+ENVIRONMENT=productionerrorlog = "/var/log/boram_safety/error.log"
+
+LOG_LEVEL=WARNINGloglevel = "info"
+
+SECRET_KEY=your_32_character_secret_key
+
+```# 프로세스
+
 user = "www-data"
-group = "www-data"
+
+### SSL 인증서group = "www-data"
+
 daemon = False
-pidfile = "/var/run/boram_safety.pid"
-```
 
-### 5. Systemd 서비스 생성
+```bashpidfile = "/var/run/boram_safety.pid"
+
+# Let's Encrypt```
+
+sudo certbot --nginx -d yourdomain.com
+
+```### 5. Systemd 서비스 생성
+
 ```bash
-# 서비스 파일 생성
+
+---# 서비스 파일 생성
+
 sudo nano /etc/systemd/system/boram-safety-backend.service
-```
 
-```ini
+## 🌐 배포 플랫폼별 가이드```
+
+
+
+### Vercel (Frontend)```ini
+
 [Unit]
-Description=Boram Safety Backend API
-After=network.target postgresql.service
 
-[Service]
-Type=notify
-User=www-data
-Group=www-data
-WorkingDirectory=/path/to/boram-safety/backend
-Environment=PATH=/path/to/boram-safety/backend/venv/bin
+1. Vercel 프로젝트 생성Description=Boram Safety Backend API
+
+2. GitHub 연결After=network.target postgresql.service
+
+3. 설정:
+
+   - Root Directory: `frontend`[Service]
+
+   - Build Command: `npm run build`Type=notify
+
+4. 환경 변수:User=www-data
+
+   ```Group=www-data
+
+   NEXT_PUBLIC_API_URL=https://your-backend/apiWorkingDirectory=/path/to/boram-safety/backend
+
+   ```Environment=PATH=/path/to/boram-safety/backend/venv/bin
+
 ExecStart=/path/to/boram-safety/backend/venv/bin/gunicorn main:app -c gunicorn_config.py
-ExecReload=/bin/kill -s HUP $MAINPID
-KillMode=mixed
-TimeoutStopSec=5
-PrivateTmp=true
 
-[Install]
+### Railway (Backend + DB)ExecReload=/bin/kill -s HUP $MAINPID
+
+KillMode=mixed
+
+1. Railway 프로젝트 생성TimeoutStopSec=5
+
+2. PostgreSQL 추가PrivateTmp=true
+
+3. Backend 배포
+
+4. 환경 변수 자동 연결[Install]
+
 WantedBy=multi-user.target
-```
+
+### AWS EC2```
+
+
+
+```bash```bash
+
+# 인스턴스 접속# 서비스 시작
+
+ssh -i key.pem ubuntu@your-ipsudo systemctl daemon-reload
+
+sudo systemctl enable boram-safety-backend
+
+# Docker 설치sudo systemctl start boram-safety-backend
+
+sudo apt updatesudo systemctl status boram-safety-backend
+
+sudo apt install docker.io docker-compose```
+
+
+
+# 프로젝트 배포---
+
+git clone your-repo
+
+cd boram_safety## 🎨 프론트엔드 배포
+
+docker-compose -f docker-compose.prod.yml up -d
+
+```### 1. 빌드 준비
 
 ```bash
-# 서비스 시작
-sudo systemctl daemon-reload
-sudo systemctl enable boram-safety-backend
-sudo systemctl start boram-safety-backend
-sudo systemctl status boram-safety-backend
+
+---cd ../frontend
+
+
+
+## ✅ 배포 후 확인사항# 프로덕션 환경 변수 설정
+
+nano .env.production
+
+### Health Check```
+
+
+
+```bash```env
+
+curl https://yourdomain.com/api/health# .env.production
+
+```NEXT_PUBLIC_API_URL=https://api.your-domain.com
+
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
+
+### 기능 테스트```
+
+
+
+- [ ] 홈페이지 접속### 2. 프로덕션 빌드
+
+- [ ] 제품 목록 조회```bash
+
+- [ ] 제품 검색# 의존성 설치
+
+- [ ] 관리자 기능npm ci --only=production
+
+
+
+### 성능 테스트# 빌드
+
+npm run build
+
+```bash
+
+lighthouse https://yourdomain.com --view# 빌드 확인
+
+```npm run start
+
 ```
 
 ---
 
-## 🎨 프론트엔드 배포
-
-### 1. 빌드 준비
-```bash
-cd ../frontend
-
-# 프로덕션 환경 변수 설정
-nano .env.production
-```
-
-```env
-# .env.production
-NEXT_PUBLIC_API_URL=https://api.your-domain.com
-NEXT_PUBLIC_SITE_URL=https://your-domain.com
-```
-
-### 2. 프로덕션 빌드
-```bash
-# 의존성 설치
-npm ci --only=production
-
-# 빌드
-npm run build
-
-# 빌드 확인
-npm run start
-```
-
 ### 3. PM2 설정
-```bash
+
+## 🔧 트러블슈팅```bash
+
 # PM2 설치
-npm install -g pm2
 
-# PM2 설정 파일 생성
-nano ecosystem.config.js
-```
+### 데이터베이스 연결 실패npm install -g pm2
 
-```javascript
-// ecosystem.config.js
+
+
+```bash# PM2 설정 파일 생성
+
+# 확인사항nano ecosystem.config.js
+
+1. DB 서버 실행 확인```
+
+2. 호스트/포트/비밀번호 확인
+
+3. 방화벽 설정```javascript
+
+```// ecosystem.config.js
+
 module.exports = {
-  apps: [{
-    name: 'boram-safety-frontend',
-    script: 'npm',
-    args: 'start',
-    cwd: '/path/to/boram-safety/frontend',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3000
-    },
-    instances: 'max',
-    exec_mode: 'cluster',
-    watch: false,
-    max_memory_restart: '1G',
-    error_file: '/var/log/boram_safety/frontend-error.log',
-    out_file: '/var/log/boram_safety/frontend-out.log',
-    log_file: '/var/log/boram_safety/frontend.log'
-  }]
-};
-```
 
-```bash
+### CORS 에러  apps: [{
+
+    name: 'boram-safety-frontend',
+
+```bash    script: 'npm',
+
+# .env 파일 확인    args: 'start',
+
+CORS_ORIGINS=https://yourdomain.com    cwd: '/path/to/boram-safety/frontend',
+
+```    env: {
+
+      NODE_ENV: 'production',
+
+### Docker 컨테이너 재시작      PORT: 3000
+
+    },
+
+```bash    instances: 'max',
+
+docker logs container_name    exec_mode: 'cluster',
+
+docker-compose restart    watch: false,
+
+```    max_memory_restart: '1G',
+
+    error_file: '/var/log/boram_safety/frontend-error.log',
+
+---    out_file: '/var/log/boram_safety/frontend-out.log',
+
+    log_file: '/var/log/boram_safety/frontend.log'
+
+## 📚 참고 문서  }]
+
+};
+
+- [환경 변수 가이드](./ENVIRONMENT.md)```
+
+- [보안 설정](./SECURITY-ALERT.md)
+
+- [API 문서](./API-REFERENCE.md)```bash
+
 # PM2로 시작
-pm2 start ecosystem.config.js
+
+---pm2 start ecosystem.config.js
+
 pm2 save
-pm2 startup
+
+**배포 관련 문의: 프로젝트 관리자**pm2 startup
+
 ```
 
 ---
